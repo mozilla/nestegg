@@ -30,16 +30,16 @@ extern "C" {
     @section example Example code
 
     @code
-    nestegg * ctx;
-    nestegg_init(&ctx, io);
+    nestegg * demux_ctx;
+    nestegg_init(&demux_ctx, io, NULL);
 
     nestegg_packet * pkt;
-    while ((r = nestegg_read_packet(ctx, &pkt)) > 0) {
+    while ((r = nestegg_read_packet(demux_ctx, &pkt)) > 0) {
       unsigned int track;
 
       nestegg_packet_track(pkt, &track);
 
-      // Example code only plays track 0.
+      // This example decodes the first track only.
       if (track == 0) {
         unsigned int chunk, chunks;
 
@@ -59,7 +59,7 @@ extern "C" {
       nestegg_free_packet(pkt);
     }
 
-    nestegg_destroy(ctx);
+    nestegg_destroy(demux_ctx);
     @endcode
 */
 
