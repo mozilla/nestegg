@@ -1271,7 +1271,6 @@ read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_packet
     return -1;
 
   track_scale = 1.0;
-  get_float(entry->track_timecode_scale, &track_scale);
 
   tc_scale = get_timecode_scale(ctx);
 
