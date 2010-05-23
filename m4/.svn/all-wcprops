@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 31
+/!svn/ver/16591/trunk/theora/m4
+END
+as-ac-expand.m4
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/!svn/ver/9702/trunk/theora/m4/as-ac-expand.m4
+END
+pkg.m4
+K 25
+svn:wc:ra_dav:version-url
+V 38
+/!svn/ver/16591/trunk/theora/m4/pkg.m4
+END
+sdl.m4
+K 25
+svn:wc:ra_dav:version-url
+V 37
+/!svn/ver/9962/trunk/theora/m4/sdl.m4
+END
+vorbis.m4
+K 25
+svn:wc:ra_dav:version-url
+V 41
+/!svn/ver/16417/trunk/theora/m4/vorbis.m4
+END
+Makefile.am
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/!svn/ver/9962/trunk/theora/m4/Makefile.am
+END
+ogg.m4
+K 25
+svn:wc:ra_dav:version-url
+V 38
+/!svn/ver/16417/trunk/theora/m4/ogg.m4
+END
