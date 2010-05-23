@@ -1,4 +1,7 @@
-INCLUDES = -I$(top_srcdir)/include -I. -I./halloc
+SUBDIRS = halloc
+
+
+INCLUDES = -I$(top_srcdir)/include -I. -I$(top_srcdir)/src/halloc
 
 AM_CFLAGS = -ansi -pedantic -Wall -Wextra -Wno-long-long
 AM_CFLAGS += -O0 -g
