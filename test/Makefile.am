@@ -1,6 +1,7 @@
+INCLUDES = -I$(top_srcdir)/include -I.
 
+check_PROGRAMS = test
 
-test: test.o src/nestegg.o halloc/src/halloc.o
-
-test.o: test.c nestegg/nestegg.h
+test_SOURCES = test.c
+test_LDADD = $(top_srcdir)/src/libnestegg.la
 
