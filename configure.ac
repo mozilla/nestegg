@@ -87,8 +87,8 @@ AC_OUTPUT([
   include/Makefile
   include/nestegg/Makefile
   src/Makefile
-  src/halloc/Makefile
-  src/halloc/src/Makefile
+  halloc/Makefile
+  halloc/src/Makefile
   docs/Makefile
   docs/Doxyfile
   test/Makefile

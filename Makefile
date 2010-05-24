@@ -265,7 +265,7 @@ top_build_prefix =
 top_builddir = .
 top_srcdir = .
 AUTOMAKE_OPTIONS = foreign 1.7 dist-zip dist-bzip2
-SUBDIRS = m4 src include docs test
+SUBDIRS = m4 src include docs test halloc
 
 # we include the whole debian/ dir in EXTRA_DIST because there's a problem
 # with autotools and HFS+ MacOSX file systems that caused debian/Makefile.am

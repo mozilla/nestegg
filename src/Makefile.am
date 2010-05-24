@@ -1,7 +1,4 @@
-SUBDIRS = halloc
-
-
-INCLUDES = -I$(top_srcdir)/include -I. -I$(top_srcdir)/src/halloc
+INCLUDES = -I$(top_srcdir)/include -I. -I$(top_srcdir)/halloc
 
 AM_CFLAGS = -ansi -pedantic -Wall -Wextra -Wno-long-long
 AM_CFLAGS += -O0 -g
@@ -13,11 +10,11 @@ lib_LTLIBRARIES = libnestegg.la
 
 libnestegg_la_SOURCES = \
 	nestegg.c \
-	halloc/src/halloc.c \
-	halloc/halloc.h \
-	halloc/src/align.h \
-	halloc/src/hlist.h \
-	halloc/src/macros.h
+	$(top_srcdir)/halloc/src/halloc.c \
+	$(top_srcdir)/halloc/halloc.h \
+	$(top_srcdir)/halloc/src/align.h \
+	$(top_srcdir)/halloc/src/hlist.h \
+	$(top_srcdir)/halloc/src/macros.h
 
 
 #libnestegg_la_LDFLAGS = -version-info @SHARED_VERSION_INFO@ @SHLIB_VERSION_ARG@ 
