@@ -27,3 +27,4 @@ libnestegg.la
 docs/doxygen-build.stamp
 docs/Doxyfile
 *~
+test/test
