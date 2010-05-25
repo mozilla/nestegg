@@ -89,9 +89,9 @@ typedef struct nestegg_packet nestegg_packet; /**< Opaque handle referencing a p
 /** User supplied IO context. */
 typedef struct {
   /** User supplied read callback.
-      @param buffer  Buffer to read data into.
-      @param length  Length of supplied buffer in bytes.
-      @param userptr The #userdata supplied by the user.
+      @param buffer   Buffer to read data into.
+      @param length   Length of supplied buffer in bytes.
+      @param userdata The #userdata supplied by the user.
       @retval  1 Read succeeded.
       @retval  0 End of stream.
       @retval -1 Error. */
@@ -180,7 +180,7 @@ int nestegg_track_seek(nestegg * context, unsigned int track, uint64_t tstamp);
     @param context Stream context initialized by #nestegg_init.
     @param track   Zero based track number.
     @retval #NESTEGG_TRACK_VIDEO Track type is video.
-    @retval #NESTEGG_TRACK_VIDEO Track type is audio.
+    @retval #NESTEGG_TRACK_AUDIO Track type is audio.
     @retval -1 Error. */
 int nestegg_track_type(nestegg * context, unsigned int track);
 
