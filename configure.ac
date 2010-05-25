@@ -4,7 +4,7 @@ dnl ------------------------------------------------
 dnl Initialization and Versioning
 dnl ------------------------------------------------
 
-AC_INIT(libnestogg,[0.1git])
+AC_INIT(libnestegg,[0.1git])
 
 AC_CANONICAL_HOST
 AC_CANONICAL_TARGET
