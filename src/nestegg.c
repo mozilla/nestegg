@@ -471,14 +471,6 @@ pool_alloc(size_t size, struct pool_ctx * pool)
   return p;
 }
 
-#if 0
-static void
-pool_free(void * p)
-{
-  h_free(p);
-}
-#endif
-
 static void *
 alloc(size_t size)
 {
@@ -704,21 +696,6 @@ get_float(struct ebml_type type, double * value)
 
   return 0;
 }
-
-#if 0
-static int
-get_int(struct ebml_type type, int64_t * value)
-{
-  if (!type.read)
-    return -1;
-
-  assert(type.type == TYPE_INT);
-
-  *value = type.v.i;
-
-  return 0;
-}
-#endif
 
 static int
 get_string(struct ebml_type type, char ** value)
@@ -1271,7 +1248,6 @@ read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_packet
     return -1;
 
   track_scale = 1.0;
-  get_float(entry->track_timecode_scale, &track_scale);
 
   tc_scale = get_timecode_scale(ctx);
 
