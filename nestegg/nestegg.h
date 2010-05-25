@@ -1,5 +1,5 @@
 /*
- * Copyright © 2010 Matthew Gregan <kinetik@flim.org>
+ * Copyright © 2010 Mozilla Foundation
  *
  * This program is made available under an ISC-style license.  See the
  * accompanying file LICENSE for details.
