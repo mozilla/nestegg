@@ -11,7 +11,7 @@ SUBDIRS = m4 src include docs test halloc
 # to pick up on the lowercase changelog file and add ChangeLog to DIST_COMMON
 # because of it, breaking make dist.  This works just as well.
 EXTRA_DIST = \
-	README LICENSE \
+	AUTHORS README LICENSE \
 	autogen.sh \
 	nestegg-uninstalled.pc.in
 
