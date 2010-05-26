@@ -18,6 +18,8 @@ EXTRA_DIST = \
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = nestegg.pc
 
+DISTCLEANFILES = _stdint.h
+
 # Remove the .git folders included in the tarball
 dist-hook:
 	find $(distdir) -type d -name '.git' | xargs rm -rf

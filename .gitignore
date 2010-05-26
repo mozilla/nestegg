@@ -28,3 +28,4 @@ docs/doxygen-build.stamp
 docs/Doxyfile
 *~
 test/test
+_stdint.h

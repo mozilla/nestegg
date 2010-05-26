@@ -68,11 +68,13 @@ if test $HAVE_DOXYGEN = "false"; then
         AC_MSG_WARN([*** doxygen not found, API documentation will not be built])
 fi
 
+# Generate portable stdint.h replacement
+AX_CREATE_STDINT_H
+
 # Test whenever ld supports -version-script
 AC_PROG_LD
 AC_PROG_LD_GNU
 AC_MSG_CHECKING([how to control symbol export])
-
 
 dnl --------------------------------------------------
 dnl Do substitutions

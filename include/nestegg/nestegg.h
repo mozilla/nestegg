@@ -7,12 +7,7 @@
 #ifndef   NESTEGG_671cac2a_365d_ed69_d7a3_4491d3538d79
 #define   NESTEGG_671cac2a_365d_ed69_d7a3_4491d3538d79
 
-#ifdef _WIN32
-typedef __int64 int64_t;
-typedef unsigned __int64 uint64_t;
-#else
-#include <stdint.h>
-#endif
+#include "_stdint.h"
 
 #ifdef __cplusplus
 extern "C" {
