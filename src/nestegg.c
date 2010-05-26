@@ -1345,7 +1345,7 @@ static struct cue_point *
 find_cue_point_for_tstamp(struct ebml_list_node * cue_point, uint64_t scale, uint64_t tstamp)
 {
   uint64_t time;
-  struct cue_point *c, * prev = NULL;
+  struct cue_point * c, * prev = NULL;
 
   while (cue_point) {
     assert(cue_point->id == ID_CUE_POINT);
@@ -1354,15 +1354,14 @@ find_cue_point_for_tstamp(struct ebml_list_node * cue_point, uint64_t scale, uin
     if (!prev)
       prev = c;
 
-    if (get_uint(c->time, &time) == 0 &&
-        (time * scale > tstamp))
-      return prev;
+    if (get_uint(c->time, &time) == 0 && time * scale > tstamp)
+      break;
 
     prev = cue_point->data;
     cue_point = cue_point->next;
   }
 
-  return NULL;
+  return prev;
 }
 
 static int
