@@ -1,9 +1,11 @@
 ## Process this file with automake to produce Makefile.in
 
-AUTOMAKE_OPTIONS = foreign 1.7 dist-zip dist-bzip2
+AUTOMAKE_OPTIONS = foreign 1.7 no-dist-gzip dist-bzip2 subdir-objects
 
+INCLUDES = -I$(top_srcdir)/include -I. -I$(top_srcdir)/halloc
+AM_CFLAGS = -ansi -pedantic -Wall -Wextra -Wno-long-long -O0 -g
 
-SUBDIRS = m4 src include docs test halloc
+SUBDIRS = docs
 
 
 # we include the whole debian/ dir in EXTRA_DIST because there's a problem
@@ -13,10 +15,36 @@ SUBDIRS = m4 src include docs test halloc
 EXTRA_DIST = \
 	AUTHORS README LICENSE \
 	autogen.sh \
-	nestegg-uninstalled.pc.in
+	nestegg-uninstalled.pc.in \
+	m4/as-ac-expand.m4 \
+	m4/pkg.m4 \
+	m4/ax_create_stdint_h.m4 \
+	halloc/src/halloc.c \
+	halloc/halloc.h \
+	halloc/src/align.h \
+	halloc/src/hlist.h \
+	halloc/src/macros.h
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = nestegg.pc
+
+nesteggincludedir = $(includedir)/nestegg
+nestegginclude_HEADERS = include/nestegg/nestegg.h
+
+lib_LTLIBRARIES = src/libnestegg.la
+
+src_libnestegg_la_SOURCES = \
+	src/nestegg.c
+	halloc/src/halloc.c \
+	halloc/halloc.h \
+	halloc/src/align.h \
+	halloc/src/hlist.h \
+	halloc/src/macros.h
+
+check_PROGRAMS = test/test
+
+test_test_SOURCES = test/test.c
+test_test_LDADD = src/libnestegg.la
 
 DISTCLEANFILES = _stdint.h
 

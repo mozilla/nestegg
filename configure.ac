@@ -85,15 +85,8 @@ AC_SUBST(PROFILE)
 
 AC_OUTPUT([
   Makefile 
-  m4/Makefile
-  include/Makefile
-  include/nestegg/Makefile
-  src/Makefile
-  halloc/Makefile
-  halloc/src/Makefile
   docs/Makefile
   docs/Doxyfile
-  test/Makefile
   nestegg.pc
   nestegg-uninstalled.pc
 ])
