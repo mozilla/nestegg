@@ -9,7 +9,6 @@ AC_INIT(libnestegg,[0.1git])
 AC_CANONICAL_HOST
 AC_CANONICAL_TARGET
 
-AC_CONFIG_AUX_DIR([autoscripts])
 AC_CONFIG_MACRO_DIR([m4])
 
 AM_CONFIG_HEADER([config.h])
