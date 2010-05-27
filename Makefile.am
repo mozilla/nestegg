@@ -1,6 +1,6 @@
 ## Process this file with automake to produce Makefile.in
 
-AUTOMAKE_OPTIONS = foreign 1.8 no-dist-gzip dist-bzip2 subdir-objects
+AUTOMAKE_OPTIONS = foreign 1.11 no-dist-gzip dist-bzip2 subdir-objects
 
 INCLUDES = -I$(top_srcdir)/include -I. -I$(top_srcdir)/halloc
 AM_CFLAGS = -ansi -pedantic -Wall -Wextra -Wno-long-long -O0 -g
