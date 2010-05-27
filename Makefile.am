@@ -1,5 +1,3 @@
-## Process this file with automake to produce Makefile.in
-
 AUTOMAKE_OPTIONS = foreign 1.11 no-dist-gzip dist-bzip2 subdir-objects
 ACLOCAL_AMFLAGS = -I m4
 
@@ -8,11 +6,6 @@ AM_CFLAGS = -ansi -pedantic -Wall -Wextra -Wno-long-long -O0 -g
 
 SUBDIRS = docs
 
-
-# we include the whole debian/ dir in EXTRA_DIST because there's a problem
-# with autotools and HFS+ MacOSX file systems that caused debian/Makefile.am
-# to pick up on the lowercase changelog file and add ChangeLog to DIST_COMMON
-# because of it, breaking make dist.  This works just as well.
 EXTRA_DIST = \
 	AUTHORS README LICENSE \
 	nestegg-uninstalled.pc.in \
@@ -48,7 +41,6 @@ test_test_LDADD = src/libnestegg.la
 
 DISTCLEANFILES = _stdint.h
 
-# Remove the .git folders included in the tarball
 dist-hook:
 	find $(distdir) -type d -name '.git' | xargs rm -rf
 

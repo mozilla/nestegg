@@ -1,5 +1,3 @@
-dnl Process this file with autoconf to produce a configure script
-
 dnl ------------------------------------------------
 dnl Initialization and Versioning
 dnl ------------------------------------------------
