@@ -1,6 +1,7 @@
 ## Process this file with automake to produce Makefile.in
 
 AUTOMAKE_OPTIONS = foreign 1.11 no-dist-gzip dist-bzip2 subdir-objects
+ACLOCAL_AMFLAGS = -Im4
 
 INCLUDES = -I$(top_srcdir)/include -I. -I$(top_srcdir)/halloc
 AM_CFLAGS = -ansi -pedantic -Wall -Wextra -Wno-long-long -O0 -g
@@ -14,7 +15,6 @@ SUBDIRS = docs
 # because of it, breaking make dist.  This works just as well.
 EXTRA_DIST = \
 	AUTHORS README LICENSE \
-	autogen.sh \
 	nestegg-uninstalled.pc.in \
 	m4/as-ac-expand.m4 \
 	m4/pkg.m4 \

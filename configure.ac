@@ -46,9 +46,6 @@ AM_PROG_CC_C_O
 AC_LIBTOOL_WIN32_DLL
 AM_PROG_LIBTOOL
 
-dnl Add parameters for aclocal
-AC_SUBST(ACLOCAL_AMFLAGS, "-I m4")
-
 dnl Check for doxygen
 AC_ARG_ENABLE([doc],
 	AS_HELP_STRING([--enable-doc], [Build API documentation]),
