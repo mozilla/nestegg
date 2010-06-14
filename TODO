@@ -1,3 +1,6 @@
+- Document when read, seek, tell callbacks are used.  seek used to skip
+  unknown, for non-seekable streams this can be implemented as simple
+  read-forward.
 - Add an automated testsuite.
 - Test (and fix, if necessary) support for unknown sizes.
 - Test (and fix, if necessary) support for large files.

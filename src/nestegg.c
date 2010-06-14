@@ -840,7 +840,7 @@ read_element(nestegg * ctx, uint64_t * id, uint64_t * size)
   return 1;
 }
 
-static int
+static void
 read_master(nestegg * ctx, struct ebml_element_desc * desc)
 {
   struct ebml_list * list;
@@ -867,11 +867,9 @@ read_master(nestegg * ctx, struct ebml_element_desc * desc)
   ctx->log(ctx, NESTEGG_LOG_DEBUG, " -> using data %p", node->data);
 
   ctx_push(ctx, desc->children, node->data);
-
-  return 1;
 }
 
-static int
+static void
 read_single_master(nestegg * ctx, struct ebml_element_desc * desc)
 {
   assert(desc->type == TYPE_MASTER && !(desc->flags & DESC_FLAG_MULTI));
@@ -882,8 +880,6 @@ read_single_master(nestegg * ctx, struct ebml_element_desc * desc)
            ctx->ancestor->data + desc->offset, desc->offset);
 
   ctx_push(ctx, desc->children, ctx->ancestor->data + desc->offset);
-
-  return 1;
 }
 
 static int
@@ -894,8 +890,11 @@ read_simple(nestegg * ctx, struct ebml_element_desc * desc, size_t length)
 
   storage = (struct ebml_type *) (ctx->ancestor->data + desc->offset);
 
-  if (storage->read)
-    return -1;
+  if (storage->read) {
+    ctx->log(ctx, NESTEGG_LOG_DEBUG, "element %llx (%s) already read, skipping",
+             desc->id, desc->name);
+    return 0;
+  }
 
   storage->type = desc->type;
 
@@ -976,13 +975,15 @@ parse(nestegg * ctx, struct ebml_element_desc * top_level)
 
       if (element->type == TYPE_MASTER) {
         if (element->flags & DESC_FLAG_MULTI) {
-          r = read_master(ctx, element);
+          read_master(ctx, element);
         } else {
-          r = read_single_master(ctx, element);
+          read_single_master(ctx, element);
         }
         continue;
       } else {
         r = read_simple(ctx, element, size);
+        if (r < 0)
+          break;
       }
     } else if (is_ancestor_element(id, ctx->ancestor->previous)) {
       ctx->log(ctx, NESTEGG_LOG_DEBUG, "parent element %llx", id);
@@ -1531,8 +1532,10 @@ nestegg_track_seek(nestegg * ctx, unsigned int track, uint64_t tstamp)
       ctx_pop(ctx);
 
     /* Reset parser state to original state and seek back to old position. */
-    r = ctx_restore(ctx, &state);
-    if (r != 0)
+    if (ctx_restore(ctx, &state) != 0)
+      return -1;
+
+    if (r != 1)
       return -1;
   }
 
