@@ -494,6 +494,25 @@ io_seek(nestegg_io * io, int64_t offset, int whence)
   return io->seek(offset, whence, io->userdata);
 }
 
+static int
+io_read_skip(nestegg_io * io, size_t length)
+{
+  size_t get;
+  unsigned char buf[8192];
+  int r = 1;
+
+  while (length > 0) {
+    get = length < sizeof(buf) ? length : sizeof(buf);
+    r = io_read(io, buf, get);
+    if (r != 1) {
+      break;
+    }
+    length -= get;
+  }
+
+  return r;
+}
+
 static int64_t
 io_tell(nestegg_io * io)
 {
@@ -969,8 +988,10 @@ parse(nestegg * ctx, struct ebml_element_desc * top_level)
       if (element->flags & DESC_FLAG_OFFSET) {
         data_offset = (int64_t *) (ctx->ancestor->data + element->data_offset);
         *data_offset = io_tell(ctx->io);
-        if (*data_offset < 0)
-          return -1;
+        if (*data_offset < 0) {
+          r = -1;
+          break;
+        }
       }
 
       if (element->type == TYPE_MASTER) {
@@ -1000,9 +1021,9 @@ parse(nestegg * ctx, struct ebml_element_desc * top_level)
 
       if (id != ID_VOID && id != ID_CRC32)
         ctx->log(ctx, NESTEGG_LOG_DEBUG, "unknown element %llx", id);
-      r = io_seek(ctx->io, size, NESTEGG_SEEK_CUR);
-      if (r != 0)
-        return -1;
+      r = io_read_skip(ctx->io, size);
+      if (r != 1)
+        break;
     }
   }
 

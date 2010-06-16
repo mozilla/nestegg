@@ -217,7 +217,7 @@ main(int argc, char * argv[])
     }
   }
 
-  while ((r = nestegg_read_packet(ctx, &pkt)) > 0) {
+  while (nestegg_read_packet(ctx, &pkt) > 0) {
     nestegg_packet_track(pkt, &pkt_track);
     nestegg_packet_count(pkt, &pkt_cnt);
     nestegg_packet_tstamp(pkt, &pkt_tstamp);
