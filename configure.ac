@@ -65,7 +65,7 @@ if test $HAVE_DOXYGEN = "false"; then
 fi
 
 # Generate portable stdint.h replacement
-AX_CREATE_STDINT_H
+AX_CREATE_STDINT_H(include/nestegg/nestegg-stdint.h)
 
 # Test whenever ld supports -version-script
 AC_PROG_LD

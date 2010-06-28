@@ -22,7 +22,7 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = nestegg.pc
 
 nesteggincludedir = $(includedir)/nestegg
-nestegginclude_HEADERS = include/nestegg/nestegg.h
+nestegginclude_HEADERS = include/nestegg/nestegg.h include/nestegg/nestegg-stdint.h
 
 lib_LTLIBRARIES = src/libnestegg.la
 
@@ -39,7 +39,7 @@ check_PROGRAMS = test/test
 test_test_SOURCES = test/test.c
 test_test_LDADD = src/libnestegg.la
 
-DISTCLEANFILES = _stdint.h
+DISTCLEANFILES = include/nestegg/nestegg-stdint.h
 
 dist-hook:
 	find $(distdir) -type d -name '.git' | xargs rm -rf
