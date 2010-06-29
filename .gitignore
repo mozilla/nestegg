@@ -37,3 +37,4 @@ src/.dirstamp
 src/libnestegg.la
 stamp-h1
 test/test
+include/nestegg/nestegg-stdint.h
