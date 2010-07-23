@@ -1624,20 +1624,6 @@ nestegg_track_type(nestegg * ctx, unsigned int track)
   return -1;
 }
 
-struct bitmapinfoheader {
-  int size;
-  int width;
-  int height;
-  short planes;
-  short bit_count;
-  unsigned int compression;
-  int size_image;
-  int x_pels_per_meter;
-  int y_pels_per_meter;
-  int clr_used;
-  int clr_important;
-};
-
 int
 nestegg_track_codec_id(nestegg * ctx, unsigned int track)
 {
