@@ -1446,10 +1446,8 @@ nestegg_init(nestegg ** context, nestegg_io io, nestegg_log callback)
     return -1;
   }
 
-  /* XXX youtube hack: accept webm and matroska for now */
   if (get_string(ctx->ebml.doctype, &doctype) == 0 &&
-      (strcmp(doctype, "webm") == 0 ||
-       strcmp(doctype, "matroska") == 0) &&
+      strcmp(doctype, "webm") == 0 &&
       get_uint(ctx->ebml.doctype_read_version, &version) == 0 && version <= 2 &&
       get_uint(ctx->ebml.ebml_read_version, &version) == 0 && version <= 1 &&
       !ctx->segment.tracks.track_entry.head) {
@@ -1644,7 +1642,6 @@ int
 nestegg_track_codec_id(nestegg * ctx, unsigned int track)
 {
   char * codec_id;
-  struct ebml_binary codec_private;
   struct track_entry * entry;
 
   entry = find_track_entry(ctx, track);
@@ -1659,15 +1656,6 @@ nestegg_track_codec_id(nestegg * ctx, unsigned int track)
 
   if (strcmp(codec_id, "A_VORBIS") == 0)
     return NESTEGG_CODEC_VORBIS;
-
-  /* XXX youtube hack: accept VFW codec id for now */
-  if (strcmp(codec_id, "V_MS/VFW/FOURCC") == 0 &&
-      get_binary(entry->codec_private, &codec_private) == 0 &&
-      codec_private.length >= 40) {
-    struct bitmapinfoheader * bih = (struct bitmapinfoheader *) codec_private.data;
-    if (bih->compression == 0x30385056)
-      return NESTEGG_CODEC_VP8;
-  }
 
   return -1;
 }
