@@ -1406,7 +1406,7 @@ int
 nestegg_init(nestegg ** context, nestegg_io io, nestegg_log callback)
 {
   int r;
-  uint64_t id, version;
+  uint64_t id, version, docversion;
   struct ebml_list_node * track;
   char * doctype;
   nestegg * ctx = NULL;
@@ -1446,11 +1446,31 @@ nestegg_init(nestegg ** context, nestegg_io io, nestegg_log callback)
     return -1;
   }
 
-  if (get_string(ctx->ebml.doctype, &doctype) == 0 &&
-      strcmp(doctype, "webm") == 0 &&
-      get_uint(ctx->ebml.doctype_read_version, &version) == 0 && version <= 2 &&
-      get_uint(ctx->ebml.ebml_read_version, &version) == 0 && version <= 1 &&
-      !ctx->segment.tracks.track_entry.head) {
+  if (get_uint(ctx->ebml.ebml_read_version, &version) != 0) {
+    version = 1;
+  }
+  if (version != 1) {
+    nestegg_destroy(ctx);
+    return -1;
+  }
+
+  if (get_string(ctx->ebml.doctype, &doctype) != 0) {
+      doctype = "matroska";
+  }
+  if (strcmp(doctype, "webm") != 0) {
+    nestegg_destroy(ctx);
+    return -1;
+  }
+
+  if (get_uint(ctx->ebml.doctype_read_version, &docversion) != 0) {
+    docversion = 1;
+  }
+  if (docversion < 1 || docversion > 2) {
+    nestegg_destroy(ctx);
+    return -1;
+  }
+
+  if (!ctx->segment.tracks.track_entry.head) {
     nestegg_destroy(ctx);
     return -1;
   }
