@@ -155,6 +155,8 @@ void nestegg_destroy(nestegg * context);
 int nestegg_duration(nestegg * context, uint64_t * duration);
 
 /** Query the timecode scale of the media stream in nanoseconds.
+    Timecodes presented by nestegg have been scaled by this value
+    before presentation to the caller.
     @param context Stream context initialized by #nestegg_init.
     @param scale   Storage for the queried scale factor.
     @retval  0 Success.
