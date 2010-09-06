@@ -1514,7 +1514,7 @@ nestegg_duration(nestegg * ctx, uint64_t * duration)
 }
 
 int
-nestegg_timecode_scale(nestegg * ctx, uint64_t * scale)
+nestegg_tstamp_scale(nestegg * ctx, uint64_t * scale)
 {
   *scale = get_timecode_scale(ctx);
   return 0;
