@@ -12,7 +12,7 @@
 #include "nestegg/nestegg.h"
 
 #undef DEBUG
-#undef SEEK_TEST
+#define SEEK_TEST
 
 static int
 stdio_read(void * p, size_t length, void * fp)
@@ -20,9 +20,8 @@ stdio_read(void * p, size_t length, void * fp)
   size_t r;
 
   r = fread(p, length, 1, fp);
-  if (r == 0 && feof(fp)) {
+  if (r == 0 && feof(fp))
     return 0;
-  }
   return r == 0 ? -1 : 1;
 }
 

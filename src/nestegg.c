@@ -504,9 +504,8 @@ ne_io_read_skip(nestegg_io * io, size_t length)
   while (length > 0) {
     get = length < sizeof(buf) ? length : sizeof(buf);
     r = ne_io_read(io, buf, get);
-    if (r != 1) {
+    if (r != 1)
       break;
-    }
     length -= get;
   }
 
@@ -542,9 +541,8 @@ ne_bare_read_vint(nestegg_io * io, uint64_t * value, uint64_t * length, enum vin
     *length = count;
   *value = b;
 
-  if (maskflag == MASK_FIRST_BIT) {
+  if (maskflag == MASK_FIRST_BIT)
     *value = b & ~mask;
-  }
 
   while (--count) {
     r = ne_io_read(io, &b, 1);
@@ -967,9 +965,8 @@ ne_parse(nestegg * ctx, struct ebml_element_desc * top_level)
      push ctx onto stack and continue if sublevel ended, pop ctx off stack
      and continue */
 
-  if (!ctx->ancestor) {
+  if (!ctx->ancestor)
     return -1;
-  }
 
   for (;;) {
     r = ne_peek_element(ctx, &id, &size);
@@ -999,11 +996,10 @@ ne_parse(nestegg * ctx, struct ebml_element_desc * top_level)
       }
 
       if (element->type == TYPE_MASTER) {
-        if (element->flags & DESC_FLAG_MULTI) {
+        if (element->flags & DESC_FLAG_MULTI)
           ne_read_master(ctx, element);
-        } else {
+        else
           ne_read_single_master(ctx, element);
-        }
         continue;
       } else {
         r = ne_read_simple(ctx, element, size);
@@ -1031,11 +1027,9 @@ ne_parse(nestegg * ctx, struct ebml_element_desc * top_level)
     }
   }
 
-  if (r != 1) {
-    while (ctx->ancestor) {
+  if (r != 1)
+    while (ctx->ancestor)
       ne_ctx_pop(ctx);
-    }
-  }
 
   return r;
 }
@@ -1162,9 +1156,8 @@ ne_find_track_entry(nestegg * ctx, unsigned int track)
   node = ctx->segment.tracks.track_entry.head;
   while (node) {
     assert(node->id == ID_TRACK_ENTRY);
-    if (track == tracks) {
+    if (track == tracks)
       return node->data;
-    }
     tracks += 1;
     node = node->next;
   }
@@ -1249,9 +1242,8 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
   case LACING_FIXED:
     if ((block_size - consumed) % frames)
       return -1;
-    for (i = 0; i < frames; ++i) {
+    for (i = 0; i < frames; ++i)
       frame_sizes[i] = (block_size - consumed) / frames;
-    }
     break;
   case LACING_EBML:
     if (frames == 1)
@@ -1264,9 +1256,8 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
 
   /* sanity check unlaced frame sizes against total block size. */
   total = consumed;
-  for (i = 0; i < frames; ++i) {
+  for (i = 0; i < frames; ++i)
     total += frame_sizes[i];
-  }
   if (total > block_size)
     return -1;
 
@@ -1311,11 +1302,10 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
       return -1;
     }
 
-    if (!last) {
+    if (!last)
       pkt->frame = f;
-    } else {
+    else
       last->next = f;
-    }
     last = f;
   }
 
@@ -1355,9 +1345,8 @@ ne_find_seek_for_id(struct ebml_list_node * seek_head, uint64_t id)
       s = seek->data;
 
       if (ne_get_binary(s->id, &binary_id) == 0 &&
-          ne_buf_read_id(binary_id.data, binary_id.length) == id) {
+          ne_buf_read_id(binary_id.data, binary_id.length) == id)
         return s;
-      }
 
       seek = seek->next;
     }
@@ -1451,25 +1440,22 @@ nestegg_init(nestegg ** context, nestegg_io io, nestegg_log callback)
     return -1;
   }
 
-  if (ne_get_uint(ctx->ebml.ebml_read_version, &version) != 0) {
+  if (ne_get_uint(ctx->ebml.ebml_read_version, &version) != 0)
     version = 1;
-  }
   if (version != 1) {
     nestegg_destroy(ctx);
     return -1;
   }
 
-  if (ne_get_string(ctx->ebml.doctype, &doctype) != 0) {
-      doctype = "matroska";
-  }
+  if (ne_get_string(ctx->ebml.doctype, &doctype) != 0)
+    doctype = "matroska";
   if (strcmp(doctype, "webm") != 0) {
     nestegg_destroy(ctx);
     return -1;
   }
 
-  if (ne_get_uint(ctx->ebml.doctype_read_version, &docversion) != 0) {
+  if (ne_get_uint(ctx->ebml.doctype_read_version, &docversion) != 0)
     docversion = 1;
-  }
   if (docversion < 1 || docversion > 2) {
     nestegg_destroy(ctx);
     return -1;
@@ -1850,16 +1836,14 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
 
   for (;;) {
     r = ne_peek_element(ctx, &id, &size);
-    if (r != 1) {
+    if (r != 1)
       return r;
-    }
 
     /* any suspend fields must be handled here */
     if (ne_is_suspend_element(id)) {
       r = ne_read_element(ctx, &id, &size);
-      if (r != 1) {
+      if (r != 1)
         return r;
-      }
 
       /* the only suspend fields are blocks and simple blocks, which we
          handle directly. */
