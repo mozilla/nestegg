@@ -967,6 +967,10 @@ ne_parse(nestegg * ctx, struct ebml_element_desc * top_level)
      push ctx onto stack and continue if sublevel ended, pop ctx off stack
      and continue */
 
+  if (!ctx->ancestor) {
+    return -1;
+  }
+
   for (;;) {
     r = ne_peek_element(ctx, &id, &size);
     if (r != 1)
@@ -1028,8 +1032,9 @@ ne_parse(nestegg * ctx, struct ebml_element_desc * top_level)
   }
 
   if (r != 1) {
-    while(ctx->ancestor)
+    while (ctx->ancestor) {
       ne_ctx_pop(ctx);
+    }
   }
 
   return r;

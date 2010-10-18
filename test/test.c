@@ -12,6 +12,7 @@
 #include "nestegg/nestegg.h"
 
 #undef DEBUG
+#undef SEEK_TEST
 
 static int
 stdio_read(void * p, size_t length, void * fp)
@@ -145,6 +146,7 @@ main(int argc, char * argv[])
 #endif
   }
 
+#ifdef SEEK_TEST
 #ifdef DEBUG
   fprintf(stderr, "seek to middle\n");
 #endif
@@ -216,6 +218,7 @@ main(int argc, char * argv[])
 #endif
     }
   }
+#endif
 
   while (nestegg_read_packet(ctx, &pkt) > 0) {
     nestegg_packet_track(pkt, &pkt_track);
