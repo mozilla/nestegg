@@ -112,11 +112,22 @@ enum ebml_type_enum {
 #define DESC_FLAG_SUSPEND       (1 << 1)
 #define DESC_FLAG_OFFSET        (1 << 2)
 
+/* Block Header Flags */
+#define BLOCK_FLAGS_LACING      6
+
 /* Lacing Constants */
 #define LACING_NONE             0
 #define LACING_XIPH             1
 #define LACING_FIXED            2
 #define LACING_EBML             3
+
+/* Track Types */
+#define TRACK_TYPE_VIDEO        1
+#define TRACK_TYPE_AUDIO        2
+
+/* Track IDs */
+#define TRACK_ID_VP8            "V_VP8"
+#define TRACK_ID_VORBIS         "A_VORBIS"
 
 enum vint_mask {
   MASK_NONE,
@@ -1209,7 +1220,7 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
 
   /* flags are different between block and simpleblock, but lacing is
      encoded the same way */
-  lacing = (flags & 0x6) >> 1;
+  lacing = (flags & BLOCK_FLAGS_LACING) >> 1;
 
   switch (lacing) {
   case LACING_NONE:
@@ -1633,10 +1644,10 @@ nestegg_track_type(nestegg * ctx, unsigned int track)
   if (ne_get_uint(entry->type, &type) != 0)
     return -1;
 
-  if (type & 0x1)
+  if (type & TRACK_TYPE_VIDEO)
     return NESTEGG_TRACK_VIDEO;
 
-  if (type & 0x2)
+  if (type & TRACK_TYPE_AUDIO)
     return NESTEGG_TRACK_AUDIO;
 
   return -1;
@@ -1655,10 +1666,10 @@ nestegg_track_codec_id(nestegg * ctx, unsigned int track)
   if (ne_get_string(entry->codec_id, &codec_id) != 0)
     return -1;
 
-  if (strcmp(codec_id, "V_VP8") == 0)
+  if (strcmp(codec_id, TRACK_ID_VP8) == 0)
     return NESTEGG_CODEC_VP8;
 
-  if (strcmp(codec_id, "A_VORBIS") == 0)
+  if (strcmp(codec_id, TRACK_ID_VORBIS) == 0)
     return NESTEGG_CODEC_VORBIS;
 
   return -1;
