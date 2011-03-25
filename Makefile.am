@@ -34,6 +34,8 @@ src_libnestegg_la_SOURCES = \
 	halloc/src/hlist.h \
 	halloc/src/macros.h
 
+src_libnestegg_la_LDFLAGS = -export-symbols-regex '^nestegg_'
+
 check_PROGRAMS = test/test
 
 test_test_SOURCES = test/test.c
