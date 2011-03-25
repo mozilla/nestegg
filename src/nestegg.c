@@ -662,7 +662,7 @@ ne_read_float(nestegg_io * io, double * val, uint64_t length)
   } value;
   int r;
 
-  /* length == 10 not implemented */
+  /* Length == 10 not implemented. */
   if (length != 4 && length != 8)
     return -1;
   r = ne_read_uint(io, &value.u, length);
@@ -970,15 +970,6 @@ ne_parse(nestegg * ctx, struct ebml_element_desc * top_level)
   uint64_t id, size;
   struct ebml_element_desc * element;
 
-  /* loop until we need to return:
-     - hit suspend point
-     - parse complete
-     - error occurred */
-
-  /* loop over elements at current level reading them if sublevel found,
-     push ctx onto stack and continue if sublevel ended, pop ctx off stack
-     and continue */
-
   if (!ctx->ancestor)
     return -1;
 
@@ -1108,7 +1099,7 @@ ne_read_xiph_lacing(nestegg_io * io, size_t block, size_t * read, uint64_t n, ui
   if (*read + sum > block)
     return -1;
 
-  /* last frame is the remainder of the block */
+  /* Last frame is the remainder of the block. */
   sizes[i] = block - *read - sum;
   return 1;
 }
@@ -1145,7 +1136,7 @@ ne_read_ebml_lacing(nestegg_io * io, size_t block, size_t * read, uint64_t n, ui
   if (*read + sum > block)
     return -1;
 
-  /* last frame is the remainder of the block */
+  /* Last frame is the remainder of the block. */
   sizes[i] = block - *read - sum;
   return 1;
 }
@@ -1221,8 +1212,8 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
 
   frames = 0;
 
-  /* flags are different between block and simpleblock, but lacing is
-     encoded the same way */
+  /* Flags are different between Block and SimpleBlock, but lacing is
+     encoded the same way. */
   lacing = (flags & BLOCK_FLAGS_LACING) >> 1;
 
   switch (lacing) {
@@ -1268,7 +1259,7 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
     break;
   }
 
-  /* sanity check unlaced frame sizes against total block size. */
+  /* Sanity check unlaced frame sizes against total block size. */
   total = consumed;
   for (i = 0; i < frames; ++i)
     total += frame_sizes[i];
@@ -1397,7 +1388,6 @@ ne_find_cue_point_for_tstamp(struct ebml_list_node * cue_point, uint64_t scale, 
 static int
 ne_is_suspend_element(uint64_t id)
 {
-  /* this could search the tree of elements for DESC_FLAG_SUSPEND */
   if (id == ID_SIMPLE_BLOCK || id == ID_BLOCK)
     return 1;
   return 0;
@@ -1576,7 +1566,7 @@ nestegg_track_seek(nestegg * ctx, unsigned int track, uint64_t tstamp)
     ne_ctx_push(ctx, ne_top_level_elements, ctx);
     ne_ctx_push(ctx, ne_segment_elements, &ctx->segment);
     ne_ctx_push(ctx, ne_cues_elements, &ctx->segment.cues);
-    /* parser will run until end of cues element. */
+    /* Parser will run until end of cues element. */
     ctx->log(ctx, NESTEGG_LOG_DEBUG, "seek: parsing cue elements");
     r = ne_parse(ctx, ne_cues_elements);
     while (ctx->ancestor)
@@ -1859,13 +1849,13 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
     if (r != 1)
       return r;
 
-    /* any suspend fields must be handled here */
+    /* Any DESC_FLAG_SUSPEND fields must be handled here. */
     if (ne_is_suspend_element(id)) {
       r = ne_read_element(ctx, &id, &size);
       if (r != 1)
         return r;
 
-      /* the only suspend fields are blocks and simple blocks, which we
+      /* The only DESC_FLAG_SUSPEND fields are Blocks and SimpleBlocks, which we
          handle directly. */
       r = ne_read_block(ctx, id, size, pkt);
       return r;
