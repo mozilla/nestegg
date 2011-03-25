@@ -3,7 +3,7 @@ doc_DATA = doxygen-build.stamp
 EXTRA_DIST = Doxyfile.in
 
 if HAVE_DOXYGEN
-doxygen-build.stamp: Doxyfile
+doxygen-build.stamp: Doxyfile ../include/nestegg/nestegg.h
 	doxygen
 	touch doxygen-build.stamp
 else

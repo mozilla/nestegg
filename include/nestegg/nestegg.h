@@ -19,8 +19,8 @@ extern "C" {
 
     This is the documentation for the <tt>libnestegg</tt> C API.
     <tt>libnestegg</tt> is a demultiplexing library for <a
-    href="http://www.matroska.org/">Matroska</a> and <a
-    href="http://www.webmproject.org/">WebMedia</a> media files.
+    href="http://www.webmproject.org/code/specs/container/">WebM</a>
+    media files.
 
     @section example Example code
 

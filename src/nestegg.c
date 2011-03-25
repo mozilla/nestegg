@@ -25,7 +25,7 @@
 #define ID_VOID                 0xec
 #define ID_CRC32                0xbf
 
-/* WebMedia Elements */
+/* WebM Elements */
 #define ID_SEGMENT              0x18538067
 
 /* Seek Head Elements */
@@ -342,7 +342,7 @@ static struct ebml_element_desc ne_ebml_elements[] = {
   E_LAST
 };
 
-/* WebMedia Element Lists */
+/* WebM Element Lists */
 static struct ebml_element_desc ne_seek_elements[] = {
   E_FIELD(ID_SEEK_ID, TYPE_BINARY, struct seek, id),
   E_FIELD(ID_SEEK_POSITION, TYPE_UINT, struct seek, position),
