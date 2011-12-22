@@ -932,8 +932,6 @@ ne_read_simple(nestegg * ctx, struct ebml_element_desc * desc, size_t length)
   ctx->log(ctx, NESTEGG_LOG_DEBUG, "element %llx (%s) -> %p (%u)",
            desc->id, desc->name, storage, desc->offset);
 
-  r = -1;
-
   switch (desc->type) {
   case TYPE_UINT:
     r = ne_read_uint(ctx->io, &storage->v.u, length);
