@@ -1,4 +1,4 @@
-AUTOMAKE_OPTIONS = foreign 1.11 no-dist-gzip dist-bzip2 subdir-objects
+AUTOMAKE_OPTIONS = foreign 1.11 no-dist-gzip dist-xz subdir-objects
 ACLOCAL_AMFLAGS = -I m4
 
 INCLUDES = -I$(top_srcdir)/include -I. -I$(top_srcdir)/halloc
