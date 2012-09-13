@@ -102,7 +102,7 @@ main(int argc, char * argv[])
   io.userdata = fp;
 
   ctx = NULL;
-  r = nestegg_init(&ctx, io, log_callback);
+  r = nestegg_init(&ctx, io, log_callback, -1);
   if (r != 0)
     return EXIT_FAILURE;
 
