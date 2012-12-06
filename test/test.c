@@ -15,9 +15,10 @@
 #define SEEK_TEST
 
 static int
-stdio_read(void * p, size_t length, void * fp)
+stdio_read(void * p, size_t length, void * file)
 {
   size_t r;
+  FILE * fp = file;
 
   r = fread(p, length, 1, fp);
   if (r == 0 && feof(fp))
@@ -26,8 +27,9 @@ stdio_read(void * p, size_t length, void * fp)
 }
 
 static int
-stdio_seek(int64_t offset, int whence, void * fp)
+stdio_seek(int64_t offset, int whence, void * file)
 {
+  FILE * fp = file;
   return fseek(fp, offset, whence);
 }
 
