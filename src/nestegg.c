@@ -2048,3 +2048,128 @@ nestegg_packet_data(nestegg_packet * pkt, unsigned int item,
 
   return -1;
 }
+
+/* Three functions that implement the nestegg_io interface, operating on a
+ * sniff_buffer. */
+struct sniff_buffer {
+  unsigned char const * buffer;
+  size_t length;
+  int64_t offset;
+};
+
+static int
+buffer_read(void * buffer, size_t length, void * user_data)
+{
+  struct sniff_buffer * sb = (struct sniff_buffer *) user_data;
+
+  int rv = 1;
+  size_t available = sb->length - sb->offset;
+
+  if (available < length) {
+    return 0;
+  }
+  memcpy(buffer, sb->buffer + sb->offset, length);
+  sb->offset += length;
+
+  return rv;
+}
+
+static int
+buffer_seek(int64_t offset, int whence, void * user_data)
+{
+  struct sniff_buffer * sb = (struct sniff_buffer *) user_data;
+  int64_t o = sb->offset;
+
+  switch(whence) {
+    case NESTEGG_SEEK_SET:
+      o = offset;
+      break;
+    case NESTEGG_SEEK_CUR:
+      o += offset;
+      break;
+    case NESTEGG_SEEK_END:
+      o = sb->length + offset;
+      break;
+  }
+
+  if (o < 0 || o > sb->length) {
+    return -1;
+  }
+
+  sb->offset = o;
+  return 0;
+}
+
+static int64_t
+buffer_tell(void * user_data)
+{
+  struct sniff_buffer * sb = (struct sniff_buffer *) user_data;
+  return sb->offset;
+}
+
+static int
+match_webm(nestegg ** context, nestegg_io io, int64_t max_offset)
+{
+  int r;
+  uint64_t id;
+  char * doctype;
+  nestegg * ctx;
+
+  if (!(io.read && io.seek && io.tell))
+    return -1;
+
+  ctx = ne_alloc(sizeof(*ctx));
+
+  ctx->io = ne_alloc(sizeof(*ctx->io));
+  *ctx->io = io;
+  ctx->alloc_pool = ne_pool_init();
+  ctx->log = ne_null_log_callback;
+
+  r = ne_peek_element(ctx, &id, NULL);
+  if (r != 1) {
+    nestegg_destroy(ctx);
+    return 0;
+  }
+
+  if (id != ID_EBML) {
+    nestegg_destroy(ctx);
+    return 0;
+  }
+
+  ne_ctx_push(ctx, ne_top_level_elements, ctx);
+
+  /* we don't check the return value of ne_parse, that might fail because
+   * max_offset is not on a valid element end point. We only want to check
+   * the EBML ID and that the doctype is "webm". */
+  ne_parse(ctx, NULL, max_offset);
+
+  if (ne_get_string(ctx->ebml.doctype, &doctype) != 0 ||
+      strcmp(doctype, "webm") != 0) {
+    nestegg_destroy(ctx);
+    return 0;
+  }
+
+  nestegg_destroy(ctx);
+
+  return 1;
+}
+
+int
+nestegg_sniff(unsigned char const * buffer, size_t length)
+{
+  nestegg_io io;
+  nestegg * context;
+  struct sniff_buffer user_data;
+  int r;
+
+  user_data.buffer = buffer;
+  user_data.length = length;
+  user_data.offset = 0;
+
+  io.read = buffer_read;
+  io.seek = buffer_seek;
+  io.tell = buffer_tell;
+  io.userdata = &user_data;
+  return match_webm(&context, io, length);
+}
+

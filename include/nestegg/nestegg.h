@@ -325,6 +325,15 @@ int nestegg_packet_data(nestegg_packet * packet, unsigned int item,
  * @retval 1 The media has cues. */
 int nestegg_has_cues(nestegg * context);
 
+/**
+ * Try to determine if the buffer looks like the beginning of a WebM file.
+ *
+ * @param buffer A buffer containing the beginning of a media file.
+ * @param size The size of the buffer.
+ * @retval 0 The file is not a WebM file.
+ * @retval 1 The file is a WebM file. */
+int nestegg_sniff(unsigned char const * buffer, size_t length);
+
 #ifdef __cplusplus
 }
 #endif
