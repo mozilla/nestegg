@@ -1626,7 +1626,7 @@ int
 nestegg_has_cues(nestegg * ctx)
 {
   return ctx->segment.cues.cue_point.head ||
-    ne_find_seek_for_id(ctx->segment.seek_head.head, ID_CUES);
+         ne_find_seek_for_id(ctx->segment.seek_head.head, ID_CUES);
 }
 
 int
