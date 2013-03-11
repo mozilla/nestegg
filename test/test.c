@@ -45,7 +45,7 @@ log_callback(nestegg * ctx, unsigned int severity, char const * fmt, ...)
   va_list ap;
   char const * sev = NULL;
 
-#ifndef DEBUG
+#if !defined(DEBUG)
   if (severity < NESTEGG_LOG_WARNING)
     return;
 #endif
@@ -110,26 +110,26 @@ main(int argc, char * argv[])
 
   nestegg_track_count(ctx, &tracks);
   nestegg_duration(ctx, &duration);
-#ifdef DEBUG
+#if defined(DEBUG)
   fprintf(stderr, "media has %u tracks and duration %fs\n", tracks, duration / 1e9);
 #endif
 
   for (i = 0; i < tracks; ++i) {
     type = nestegg_track_type(ctx, i);
-#ifdef DEBUG
+#if defined(DEBUG)
     fprintf(stderr, "track %u: type: %d codec: %d", i,
             type, nestegg_track_codec_id(ctx, i));
 #endif
     nestegg_track_codec_data_count(ctx, i, &data_items);
     for (j = 0; j < data_items; ++j) {
       nestegg_track_codec_data(ctx, i, j, &codec_data, &length);
-#ifdef DEBUG
+#if defined(DEBUG)
       fprintf(stderr, " (%p, %u)", codec_data, (unsigned int) length);
 #endif
     }
     if (type == NESTEGG_TRACK_VIDEO) {
       nestegg_track_video_params(ctx, i, &vparams);
-#ifdef DEBUG
+#if defined(DEBUG)
       fprintf(stderr, " video: %ux%u (d: %ux%u %ux%ux%ux%u)",
               vparams.width, vparams.height,
               vparams.display_width, vparams.display_height,
@@ -137,23 +137,23 @@ main(int argc, char * argv[])
 #endif
     } else if (type == NESTEGG_TRACK_AUDIO) {
       nestegg_track_audio_params(ctx, i, &aparams);
-#ifdef DEBUG
+#if defined(DEBUG)
       fprintf(stderr, " audio: %.2fhz %u bit %u channels",
               aparams.rate, aparams.depth, aparams.channels);
 #endif
     }
-#ifdef DEBUG
+#if defined(DEBUG)
     fprintf(stderr, "\n");
 #endif
   }
 
-#ifdef SEEK_TEST
-#ifdef DEBUG
+#if defined(SEEK_TEST)
+#if defined(DEBUG)
   fprintf(stderr, "seek to middle\n");
 #endif
   r = nestegg_track_seek(ctx, 0, duration / 2);
   if (r == 0) {
-#ifdef DEBUG
+#if defined(DEBUG)
     fprintf(stderr, "middle ");
 #endif
     r = nestegg_read_packet(ctx, &pkt);
@@ -161,23 +161,23 @@ main(int argc, char * argv[])
       nestegg_packet_track(pkt, &track);
       nestegg_packet_count(pkt, &cnt);
       nestegg_packet_tstamp(pkt, &tstamp);
-#ifdef DEBUG
+#if defined(DEBUG)
       fprintf(stderr, "* t %u pts %f frames %u\n", track, tstamp / 1e9, cnt);
 #endif
       nestegg_free_packet(pkt);
     } else {
-#ifdef DEBUG
+#if defined(DEBUG)
       fprintf(stderr, "middle seek failed\n");
 #endif
     }
   }
 
-#ifdef DEBUG
+#if defined(DEBUG)
   fprintf(stderr, "seek to ~end\n");
 #endif
   r = nestegg_track_seek(ctx, 0, duration - (duration / 10));
   if (r == 0) {
-#ifdef DEBUG
+#if defined(DEBUG)
     fprintf(stderr, "end ");
 #endif
     r = nestegg_read_packet(ctx, &pkt);
@@ -185,23 +185,23 @@ main(int argc, char * argv[])
       nestegg_packet_track(pkt, &track);
       nestegg_packet_count(pkt, &cnt);
       nestegg_packet_tstamp(pkt, &tstamp);
-#ifdef DEBUG
+#if defined(DEBUG)
       fprintf(stderr, "* t %u pts %f frames %u\n", track, tstamp / 1e9, cnt);
 #endif
       nestegg_free_packet(pkt);
     } else {
-#ifdef DEBUG
+#if defined(DEBUG)
       fprintf(stderr, "end seek failed\n");
 #endif
     }
   }
 
-#ifdef DEBUG
+#if defined(DEBUG)
   fprintf(stderr, "seek to ~start\n");
 #endif
   r = nestegg_track_seek(ctx, 0, duration / 10);
   if (r == 0) {
-#ifdef DEBUG
+#if defined(DEBUG)
     fprintf(stderr, "start ");
 #endif
     r = nestegg_read_packet(ctx, &pkt);
@@ -209,12 +209,12 @@ main(int argc, char * argv[])
       nestegg_packet_track(pkt, &track);
       nestegg_packet_count(pkt, &cnt);
       nestegg_packet_tstamp(pkt, &tstamp);
-#ifdef DEBUG
+#if defined(DEBUG)
       fprintf(stderr, "* t %u pts %f frames %u\n", track, tstamp / 1e9, cnt);
 #endif
       nestegg_free_packet(pkt);
     } else {
-#ifdef DEBUG
+#if defined(DEBUG)
       fprintf(stderr, "start seek failed\n");
 #endif
     }
@@ -226,17 +226,17 @@ main(int argc, char * argv[])
     nestegg_packet_count(pkt, &pkt_cnt);
     nestegg_packet_tstamp(pkt, &pkt_tstamp);
 
-#ifdef DEBUG
+#if defined(DEBUG)
     fprintf(stderr, "t %u pts %f frames %u: ", pkt_track, pkt_tstamp / 1e9, pkt_cnt);
 #endif
 
     for (i = 0; i < pkt_cnt; ++i) {
       nestegg_packet_data(pkt, i, &ptr, &size);
-#ifdef DEBUG
+#if defined(DEBUG)
       fprintf(stderr, "%u ", (unsigned int) size);
 #endif
     }
-#ifdef DEBUG
+#if defined(DEBUG)
     fprintf(stderr, "\n");
 #endif
 
