@@ -1422,9 +1422,8 @@ ne_find_cue_position_for_track(nestegg * ctx, struct ebml_list_node * node, unsi
     if (ne_map_track_number_to_index(ctx, track_number, &t) != 0)
       return NULL;
 
-    if (t == track) {
+    if (t == track)
       return pos;
-    }
 
     node = node->next;
   }
@@ -1550,9 +1549,9 @@ ne_buffer_read(void * buffer, size_t length, void * user_data)
   int rv = 1;
   size_t available = sb->length - sb->offset;
 
-  if (available < length) {
+  if (available < length)
     return 0;
-  }
+
   memcpy(buffer, sb->buffer + sb->offset, length);
   sb->offset += length;
 
@@ -1577,9 +1576,8 @@ ne_buffer_seek(int64_t offset, int whence, void * user_data)
       break;
   }
 
-  if (o < 0 || o > (int64_t) sb->length) {
+  if (o < 0 || o > (int64_t) sb->length)
     return -1;
-  }
 
   sb->offset = o;
   return 0;
