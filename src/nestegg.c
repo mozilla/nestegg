@@ -2000,34 +2000,40 @@ nestegg_track_codec_data(nestegg * ctx, unsigned int track, unsigned int item,
   if (!entry)
     return -1;
 
-  if (nestegg_track_codec_id(ctx, track) != NESTEGG_CODEC_VORBIS)
+  if (nestegg_track_codec_id(ctx, track) != NESTEGG_CODEC_VORBIS
+    && nestegg_track_codec_id(ctx, track) != NESTEGG_CODEC_OPUS)
     return -1;
 
   if (ne_get_binary(entry->codec_private, &codec_private) != 0)
     return -1;
 
-  p = codec_private.data;
-  count = *p++ + 1;
+  if (nestegg_track_codec_id(ctx, track) == NESTEGG_CODEC_VORBIS) {
+      p = codec_private.data;
+      count = *p++ + 1;
 
-  if (count > 3)
-    return -1;
+      if (count > 3)
+        return -1;
 
-  i = 0;
-  total = 0;
-  while (--count) {
-    sizes[i] = ne_xiph_lace_value(&p);
-    total += sizes[i];
-    i += 1;
+      i = 0;
+      total = 0;
+      while (--count) {
+        sizes[i] = ne_xiph_lace_value(&p);
+        total += sizes[i];
+        i += 1;
+      }
+      sizes[i] = codec_private.length - total - (p - codec_private.data);
+
+      for (i = 0; i < item; ++i) {
+        if (sizes[i] > LIMIT_FRAME)
+          return -1;
+        p += sizes[i];
+      }
+      *data = p;
+      *length = sizes[item];
+  } else {
+    *data = codec_private.data;
+    *length = codec_private.length;
   }
-  sizes[i] = codec_private.length - total - (p - codec_private.data);
-
-  for (i = 0; i < item; ++i) {
-    if (sizes[i] > LIMIT_FRAME)
-      return -1;
-    p += sizes[i];
-  }
-  *data = p;
-  *length = sizes[item];
 
   return 0;
 }
