@@ -63,6 +63,8 @@
 #define ID_LANGUAGE             0x22b59c
 #define ID_CODEC_ID             0x86
 #define ID_CODEC_PRIVATE        0x63a2
+#define ID_CODEC_DELAY          0x56aa
+#define ID_SEEK_PREROLL         0x56bb
 
 /* Video Elements */
 #define ID_VIDEO                0xe0
@@ -230,6 +232,8 @@ struct track_entry {
   struct ebml_type language;
   struct ebml_type codec_id;
   struct ebml_type codec_private;
+  struct ebml_type codec_delay;
+  struct ebml_type seek_preroll;
   struct video video;
   struct audio audio;
 };
@@ -409,6 +413,8 @@ static struct ebml_element_desc ne_track_entry_elements[] = {
   E_FIELD(ID_LANGUAGE, TYPE_STRING, struct track_entry, language),
   E_FIELD(ID_CODEC_ID, TYPE_STRING, struct track_entry, codec_id),
   E_FIELD(ID_CODEC_PRIVATE, TYPE_BINARY, struct track_entry, codec_private),
+  E_FIELD(ID_CODEC_DELAY, TYPE_UINT, struct track_entry, codec_delay),
+  E_FIELD(ID_SEEK_PREROLL, TYPE_UINT, struct track_entry, seek_preroll),
   E_SINGLE_MASTER(ID_VIDEO, TYPE_MASTER, struct track_entry, video),
   E_SINGLE_MASTER(ID_AUDIO, TYPE_MASTER, struct track_entry, audio),
   E_LAST
@@ -2109,6 +2115,14 @@ nestegg_track_audio_params(nestegg * ctx, unsigned int track,
   value = 16;
   ne_get_uint(entry->audio.bit_depth, &value);
   params->depth = value;
+
+  value = 0;
+  ne_get_uint(entry->codec_delay, &value);
+  params->codec_delay = value;
+
+  value = 0;
+  ne_get_uint(entry->seek_preroll, &value);
+  params->seek_preroll = value;
 
   return 0;
 }

@@ -140,6 +140,8 @@ typedef struct {
   double rate;           /**< Sampling rate in Hz. */
   unsigned int channels; /**< Number of audio channels. */
   unsigned int depth;    /**< Bits per sample. */
+  uint64_t  codec_delay; /**< Nanoseconds that must be discarded from the start. */
+  uint64_t  seek_preroll;/**< Nanoseconds that must be discarded after a seek. */
 } nestegg_audio_params;
 
 /** Logging callback function pointer. */
