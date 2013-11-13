@@ -323,6 +323,14 @@ int nestegg_packet_count(nestegg_packet * packet, unsigned int * count);
 int nestegg_packet_data(nestegg_packet * packet, unsigned int item,
                         unsigned char ** data, size_t * length);
 
+/** Returns discard_padding for given packet
+    @param packet  Packet initialized by #nestegg_read_packet.
+    @param discard_padding pointer to store discard padding in.
+    @retval  0 Success.
+    @retval -1 Error. */
+int nestegg_packet_discard_padding(nestegg_packet * packet,
+                                   int64_t * discard_padding);
+
 /** Query the presence of cues.
     @param context  Stream context initialized by #nestegg_init.
     @retval 0 The media has no cues.

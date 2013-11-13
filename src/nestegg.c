@@ -49,6 +49,7 @@
 #define ID_BLOCK                0xa1
 #define ID_BLOCK_DURATION       0x9b
 #define ID_REFERENCE_BLOCK      0xfb
+#define ID_DISCARD_PADDING      0x75a2
 
 /* Tracks Elements */
 #define ID_TRACKS               0x1654ae6b
@@ -196,6 +197,7 @@ struct info {
 struct block_group {
   struct ebml_type duration;
   struct ebml_type reference_block;
+  struct ebml_type discard_padding;
 };
 
 struct cluster {
@@ -309,6 +311,7 @@ struct nestegg_packet {
   uint64_t track;
   uint64_t timecode;
   struct frame * frame;
+  int64_t discard_padding;
 };
 
 /* Element Descriptor */
@@ -372,6 +375,7 @@ static struct ebml_element_desc ne_block_group_elements[] = {
   E_SUSPEND(ID_BLOCK, TYPE_BINARY),
   E_FIELD(ID_BLOCK_DURATION, TYPE_UINT, struct block_group, duration),
   E_FIELD(ID_REFERENCE_BLOCK, TYPE_INT, struct block_group, reference_block),
+  E_FIELD(ID_DISCARD_PADDING, TYPE_INT, struct block_group, discard_padding),
   E_LAST
 };
 
@@ -1371,6 +1375,31 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
   return 1;
 }
 
+static int
+ne_read_discard_padding(nestegg *ctx, nestegg_packet **pkt) {
+  int r;
+  uint64_t id, size;
+  struct ebml_element_desc * element;
+  struct ebml_type * storage;
+
+  r = ne_peek_element(ctx, &id, &size);
+  if (r != 1)
+    return r;
+
+  if(id == ID_DISCARD_PADDING) {
+    element = ne_find_element(id, ctx->ancestor->node);
+    if (element) {
+        r = ne_read_simple(ctx, element, size);
+        if (r != 1)
+          return r;
+        storage = (struct ebml_type *) (ctx->ancestor->data + element->offset);
+        (*pkt)->discard_padding = storage->v.i;
+    }
+  }
+  return 1;
+}
+
+
 static uint64_t
 ne_buf_read_id(unsigned char const * p, size_t length)
 {
@@ -2155,6 +2184,13 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
       /* The only DESC_FLAG_SUSPEND fields are Blocks and SimpleBlocks, which we
          handle directly. */
       r = ne_read_block(ctx, id, size, pkt);
+      if (r != 1)
+        return r;
+
+      r = ne_read_discard_padding(ctx, pkt);
+      if (r != 1)
+        return r;
+
       return r;
     }
 
@@ -2192,6 +2228,13 @@ int
 nestegg_packet_tstamp(nestegg_packet * pkt, uint64_t * tstamp)
 {
   *tstamp = pkt->timecode;
+  return 0;
+}
+
+int
+nestegg_packet_discard_padding(nestegg_packet * pkt, int64_t * discard_padding)
+{
+  *discard_padding = pkt->discard_padding;
   return 0;
 }
 
