@@ -1376,7 +1376,8 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
 }
 
 static int
-ne_read_discard_padding(nestegg *ctx, nestegg_packet **pkt) {
+ne_read_discard_padding(nestegg * ctx, nestegg_packet * pkt)
+{
   int r;
   uint64_t id, size;
   struct ebml_element_desc * element;
@@ -1386,16 +1387,19 @@ ne_read_discard_padding(nestegg *ctx, nestegg_packet **pkt) {
   if (r != 1)
     return r;
 
-  if(id == ID_DISCARD_PADDING) {
-    element = ne_find_element(id, ctx->ancestor->node);
-    if (element) {
-        r = ne_read_simple(ctx, element, size);
-        if (r != 1)
-          return r;
-        storage = (struct ebml_type *) (ctx->ancestor->data + element->offset);
-        (*pkt)->discard_padding = storage->v.i;
-    }
-  }
+  if (id != ID_DISCARD_PADDING)
+    return 1;
+
+  element = ne_find_element(id, ctx->ancestor->node);
+  if (!element)
+    return 1;
+
+  r = ne_read_simple(ctx, element, size);
+  if (r != 1)
+    return r;
+  storage = (struct ebml_type *) (ctx->ancestor->data + element->offset);
+  pkt->discard_padding = storage->v.i;
+
   return 1;
 }
 
@@ -2187,7 +2191,7 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
       if (r != 1)
         return r;
 
-      r = ne_read_discard_padding(ctx, pkt);
+      r = ne_read_discard_padding(ctx, *pkt);
       if (r != 1)
         return r;
 
