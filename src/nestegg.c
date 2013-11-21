@@ -70,6 +70,7 @@
 /* Video Elements */
 #define ID_VIDEO                0xe0
 #define ID_STEREO_MODE          0x53b8
+#define ID_ALPHA_MODE           0x53C0
 #define ID_PIXEL_WIDTH          0xb0
 #define ID_PIXEL_HEIGHT         0xba
 #define ID_PIXEL_CROP_BOTTOM    0x54aa
@@ -207,6 +208,7 @@ struct cluster {
 
 struct video {
   struct ebml_type stereo_mode;
+  struct ebml_type alpha_mode;
   struct ebml_type pixel_width;
   struct ebml_type pixel_height;
   struct ebml_type pixel_crop_bottom;
@@ -388,6 +390,7 @@ static struct ebml_element_desc ne_cluster_elements[] = {
 
 static struct ebml_element_desc ne_video_elements[] = {
   E_FIELD(ID_STEREO_MODE, TYPE_UINT, struct video, stereo_mode),
+  E_FIELD(ID_ALPHA_MODE, TYPE_UINT, struct video, alpha_mode),
   E_FIELD(ID_PIXEL_WIDTH, TYPE_UINT, struct video, pixel_width),
   E_FIELD(ID_PIXEL_HEIGHT, TYPE_UINT, struct video, pixel_height),
   E_FIELD(ID_PIXEL_CROP_BOTTOM, TYPE_UINT, struct video, pixel_crop_bottom),
@@ -2092,6 +2095,10 @@ nestegg_track_video_params(nestegg * ctx, unsigned int track,
   if (value <= NESTEGG_VIDEO_STEREO_TOP_BOTTOM ||
       value == NESTEGG_VIDEO_STEREO_RIGHT_LEFT)
     params->stereo_mode = value;
+
+  value = 0;
+  ne_get_uint(entry->video.alpha_mode, &value);
+  params->alpha_mode = value;
 
   if (ne_get_uint(entry->video.pixel_width, &value) != 0)
     return -1;

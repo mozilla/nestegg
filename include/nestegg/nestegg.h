@@ -133,6 +133,7 @@ typedef struct {
   unsigned int crop_top;       /**< Pixels to crop from the top of the frame. */
   unsigned int crop_left;      /**< Pixels to crop from the left of the frame. */
   unsigned int crop_right;     /**< Pixels to crop from the right of the frame. */
+  unsigned int alpha_mode;     /**< 1 if an additional opacity stream is available, otherwise 0. */
 } nestegg_video_params;
 
 /** Parameters specific to an audio track. */
