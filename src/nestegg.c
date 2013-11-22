@@ -313,6 +313,13 @@ struct frame {
   struct frame * next;
 };
 
+struct block_additional {
+  unsigned int id;
+  unsigned char * data;
+  size_t length;
+  struct block_additional * next;
+};
+
 /* Public (opaque) Structures */
 struct nestegg {
   nestegg_io * io;
@@ -332,6 +339,7 @@ struct nestegg_packet {
   uint64_t track;
   uint64_t timecode;
   struct frame * frame;
+  struct block_additional * block_additional;
   int64_t discard_padding;
 };
 
@@ -1377,6 +1385,7 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
   pkt = ne_alloc(sizeof(*pkt));
   pkt->track = track;
   pkt->timecode = abs_timecode * tc_scale * track_scale;
+  pkt->block_additional = NULL;
 
   ctx->log(ctx, NESTEGG_LOG_DEBUG, "%sblock t %lld pts %f f %llx frames: %llu",
            block_id == ID_BLOCK ? "" : "simple", pkt->track, pkt->timecode / 1e9, flags, frames);
@@ -2249,12 +2258,20 @@ void
 nestegg_free_packet(nestegg_packet * pkt)
 {
   struct frame * frame;
+  struct block_additional * block_additional;
 
   while (pkt->frame) {
     frame = pkt->frame;
     pkt->frame = frame->next;
     free(frame->data);
     free(frame);
+  }
+
+  while (pkt->block_additional) {
+    block_additional = pkt->block_additional;
+    pkt->block_additional = block_additional->next;
+    free(block_additional->data);
+    free(block_additional);
   }
 
  free(pkt);
@@ -2314,6 +2331,27 @@ nestegg_packet_data(nestegg_packet * pkt, unsigned int item,
     }
     count += 1;
     f = f->next;
+  }
+
+  return -1;
+}
+
+int
+nestegg_packet_additional_data(nestegg_packet * pkt, unsigned int id,
+                               unsigned char ** data, size_t * length)
+{
+  struct block_additional * a = pkt->block_additional;
+
+  *data = NULL;
+  *length = 0;
+
+  while (a) {
+    if (a->id == id) {
+      *data = a->data;
+      *length = a->length;
+      return 0;
+    }
+    a = a->next;
   }
 
   return -1;
