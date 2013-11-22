@@ -44,12 +44,20 @@
 #define ID_TIMECODE             0xe7
 #define ID_BLOCK_GROUP          0xa0
 #define ID_SIMPLE_BLOCK         0xa3
+#define ID_BLOCK_MORE           0xa6
 
 /* BlockGroup Elements */
 #define ID_BLOCK                0xa1
 #define ID_BLOCK_DURATION       0x9b
 #define ID_REFERENCE_BLOCK      0xfb
 #define ID_DISCARD_PADDING      0x75a2
+
+/* BlockAdditions Elements */
+#define ID_BLOCK_ADDITIONS      0x75a1
+
+/* BlockMore Elements */
+#define ID_BLOCK_ADD_ID         0xee
+#define ID_BLOCK_ADDITIONAL     0xa5
 
 /* Tracks Elements */
 #define ID_TRACKS               0x1654ae6b
@@ -195,10 +203,21 @@ struct info {
   struct ebml_type duration;
 };
 
+struct block_more {
+  struct ebml_type block_add_id;
+  struct ebml_type block_additional;
+};
+
+struct block_additions
+{
+	struct ebml_list block_more;
+};
+
 struct block_group {
   struct ebml_type duration;
   struct ebml_type reference_block;
   struct ebml_type discard_padding;
+  struct ebml_type block_additions;
 };
 
 struct cluster {
@@ -373,11 +392,24 @@ static struct ebml_element_desc ne_info_elements[] = {
   E_LAST
 };
 
+static struct ebml_element_desc ne_block_more_elements[] = {
+  E_FIELD(ID_BLOCK_ADD_ID, TYPE_UINT, struct block_more, block_add_id),
+  E_FIELD(ID_BLOCK_ADDITIONAL, TYPE_BINARY, struct block_more, block_additional),
+  E_LAST
+};
+
+static struct ebml_element_desc ne_block_additions_elements[] =
+{
+	E_MASTER(ID_BLOCK_MORE, TYPE_MASTER, struct block_additions, block_more),
+	E_LAST
+};
+
 static struct ebml_element_desc ne_block_group_elements[] = {
   E_SUSPEND(ID_BLOCK, TYPE_BINARY),
   E_FIELD(ID_BLOCK_DURATION, TYPE_UINT, struct block_group, duration),
   E_FIELD(ID_REFERENCE_BLOCK, TYPE_INT, struct block_group, reference_block),
   E_FIELD(ID_DISCARD_PADDING, TYPE_INT, struct block_group, discard_padding),
+  E_SINGLE_MASTER(ID_BLOCK_ADDITIONS, TYPE_MASTER, struct block_group, block_additions),
   E_LAST
 };
 
