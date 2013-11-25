@@ -1447,6 +1447,122 @@ ne_read_discard_padding(nestegg * ctx, nestegg_packet * pkt)
   return 1;
 }
 
+static int
+ne_read_block_additions(nestegg * ctx, nestegg_packet * pkt)
+{
+  int r;
+  uint64_t id, size, data_size;
+  int64_t block_additions_end, block_more_end;
+  void * data;
+  int has_data;
+  /*struct ebml_element_desc * element;
+  struct ebml_list_node * block_more;*/
+  struct block_additional * block_additional;
+  uint64_t add_id;
+
+  assert(pkt != NULL);
+  assert(pkt->block_additional == NULL);
+
+  r = ne_peek_element(ctx, &id, &size);
+  if (r != 1)
+    return r;
+
+  if (id != ID_BLOCK_ADDITIONS)
+    return 1;
+
+  /* This makes ne_read_element read the next element instead of returning
+     information about the already "peeked" one. */
+  ctx->last_valid = 0;
+
+  block_additions_end = ne_io_tell(ctx->io) + size;
+
+  while (ne_io_tell(ctx->io) < block_additions_end) {
+    add_id = 1;
+    data = NULL;
+    has_data = 0;
+    r = ne_read_element(ctx, &id, &size);
+    if (r != 1)
+      return -1;
+
+    if (id != ID_BLOCK_MORE) {
+      /* We don't know what this element is, so skip over it */
+      if (id != ID_VOID && id != ID_CRC32)
+        ctx->log(ctx, NESTEGG_LOG_DEBUG,
+                 "unknown element %llx in BlockAdditions", id);
+      ne_io_read_skip(ctx->io, size);
+      continue;
+    }
+
+    block_more_end = ne_io_tell(ctx->io) + size;
+
+    while (ne_io_tell(ctx->io) < block_more_end) {
+      r = ne_read_element(ctx, &id, &size);
+      if (r != 1) {
+        free(data);
+        return r;
+      }
+
+      if (id == ID_BLOCK_ADD_ID) {
+        r = ne_read_uint(ctx->io, &add_id, size);
+        if (r != 1) {
+          free(data);
+          return r;
+        }
+
+        if (add_id == 0)
+        {
+          ctx->log(ctx, NESTEGG_LOG_ERROR, "Disallowed BlockAddId 0 used");
+          free(data);
+          return -1;
+        }
+      }
+      else if (id == ID_BLOCK_ADDITIONAL) {
+        if (has_data) {
+          /* BlockAdditional is supposed to only occur once in a
+          * BlockMore. */
+          ctx->log(ctx, NESTEGG_LOG_ERROR,
+                   "Multiple BlockAdditional elements in a BlockMore");
+          free(data);
+          return -1;
+        }
+
+        has_data = 1;
+        data_size = size;
+        if (size != 0) {
+          data = ne_alloc(size);
+          r = ne_io_read(ctx->io, data, size);
+          if (r != 1) {
+            free(data);
+            return r;
+          }
+        }
+      }
+      else {
+        /* We don't know what this element is, so skip over it */
+        if (id != ID_VOID && id != ID_CRC32)
+          ctx->log(ctx, NESTEGG_LOG_DEBUG,
+                   "unknown element %llx in BlockMore", id);
+        ne_io_read_skip(ctx->io, size);
+      }
+    }
+
+    if (has_data == 0) {
+      ctx->log(ctx, NESTEGG_LOG_ERROR,
+               "No BlockAdditional element in a BlockMore");
+      return -1;
+    }
+
+    block_additional = ne_alloc(sizeof(*block_additional));
+    block_additional->next = pkt->block_additional;
+    block_additional->id = add_id;
+    block_additional->data = data;
+    block_additional->length = data_size;
+    pkt->block_additional = block_additional;
+  }
+
+  return 1;
+}
+
 
 static uint64_t
 ne_buf_read_id(unsigned char const * p, size_t length)
@@ -2240,6 +2356,10 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
         return r;
 
       r = ne_read_discard_padding(ctx, *pkt);
+      if (r != 1)
+        return r;
+
+      r = ne_read_block_additions(ctx, *pkt);
       if (r != 1)
         return r;
 
