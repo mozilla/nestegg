@@ -276,6 +276,16 @@ int nestegg_track_video_params(nestegg * context, unsigned int track,
 int nestegg_track_audio_params(nestegg * context, unsigned int track,
                                nestegg_audio_params * params);
 
+/** Query the default frame duration for @a track.  For a video track, this
+    is typically the inverse of the video frame rate.
+    @param context  Stream context initialized by #nestegg_init.
+    @param track    Zero based track number.
+    @param duration Storage for the default duration in nanoseconds.
+    @retval  0 Success.
+    @retval -1 Error. */
+int nestegg_track_default_duration(nestegg * ctx, unsigned int track,
+                                   uint64_t * duration);
+
 /** Read a packet of media data.  A packet consists of one or more chunks of
     data associated with a single track.  nestegg_read_packet should be
     called in a loop while the return value is 1 to drive the stream parser

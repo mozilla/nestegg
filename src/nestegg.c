@@ -66,6 +66,7 @@
 #define ID_CODEC_PRIVATE        0x63a2
 #define ID_CODEC_DELAY          0x56aa
 #define ID_SEEK_PREROLL         0x56bb
+#define ID_DEFAULT_DURATION     0x23e383
 
 /* Video Elements */
 #define ID_VIDEO                0xe0
@@ -236,6 +237,7 @@ struct track_entry {
   struct ebml_type codec_private;
   struct ebml_type codec_delay;
   struct ebml_type seek_preroll;
+  struct ebml_type default_duration;
   struct video video;
   struct audio audio;
 };
@@ -419,6 +421,7 @@ static struct ebml_element_desc ne_track_entry_elements[] = {
   E_FIELD(ID_CODEC_PRIVATE, TYPE_BINARY, struct track_entry, codec_private),
   E_FIELD(ID_CODEC_DELAY, TYPE_UINT, struct track_entry, codec_delay),
   E_FIELD(ID_SEEK_PREROLL, TYPE_UINT, struct track_entry, seek_preroll),
+  E_FIELD(ID_DEFAULT_DURATION, TYPE_UINT, struct track_entry, default_duration),
   E_SINGLE_MASTER(ID_VIDEO, TYPE_MASTER, struct track_entry, video),
   E_SINGLE_MASTER(ID_AUDIO, TYPE_MASTER, struct track_entry, audio),
   E_LAST
@@ -2163,6 +2166,24 @@ nestegg_track_audio_params(nestegg * ctx, unsigned int track,
   value = 0;
   ne_get_uint(entry->seek_preroll, &value);
   params->seek_preroll = value;
+
+  return 0;
+}
+
+int
+nestegg_track_default_duration(nestegg * ctx, unsigned int track,
+                               uint64_t * duration)
+{
+  struct track_entry * entry;
+  uint64_t value;
+
+  entry = ne_find_track_entry(ctx, track);
+  if (!entry)
+    return -1;
+
+  if (ne_get_uint(entry->default_duration, &value) != 0)
+    return -1;
+  *duration = value;
 
   return 0;
 }
