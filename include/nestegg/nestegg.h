@@ -315,6 +315,13 @@ int nestegg_packet_track(nestegg_packet * packet, unsigned int * track);
     @retval -1 Error. */
 int nestegg_packet_tstamp(nestegg_packet * packet, uint64_t * tstamp);
 
+/** Query the duration in nanoseconds of @a packet.
+    @param packet Packet initialized by #nestegg_read_packet.
+    @param tstamp Storage for the queried duration in nanoseconds.
+    @retval  0 Success.
+    @retval -1 Error. */
+int nestegg_packet_duration(nestegg_packet * packet, uint64_t * duration);
+
 /** Query the number of data chunks contained in @a packet.
     @param packet Packet initialized by #nestegg_read_packet.
     @param count  Storage for the queried timestamp in nanoseconds.

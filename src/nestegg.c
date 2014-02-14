@@ -312,6 +312,7 @@ struct nestegg {
 struct nestegg_packet {
   uint64_t track;
   uint64_t timecode;
+  uint64_t duration;
   struct frame * frame;
   int64_t discard_padding;
 };
@@ -1380,6 +1381,34 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
 }
 
 static int
+ne_read_block_duration(nestegg * ctx, nestegg_packet * pkt)
+{
+  int r;
+  uint64_t id, size;
+  struct ebml_element_desc * element;
+  struct ebml_type * storage;
+
+  r = ne_peek_element(ctx, &id, &size);
+  if (r != 1)
+    return r;
+
+  if (id != ID_BLOCK_DURATION)
+    return 1;
+
+  element = ne_find_element(id, ctx->ancestor->node);
+  if (!element)
+    return 1;
+
+  r = ne_read_simple(ctx, element, size);
+  if (r != 1)
+    return r;
+  storage = (struct ebml_type *) (ctx->ancestor->data + element->offset);
+  pkt->duration = storage->v.i * ne_get_timecode_scale(ctx);
+
+  return 1;
+}
+
+static int
 ne_read_discard_padding(nestegg * ctx, nestegg_packet * pkt)
 {
   int r;
@@ -2213,6 +2242,10 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
       if (r != 1)
         return r;
 
+      r = ne_read_block_duration(ctx, *pkt);
+      if (r != 1)
+        return r;
+
       r = ne_read_discard_padding(ctx, *pkt);
       if (r != 1)
         return r;
@@ -2254,6 +2287,13 @@ int
 nestegg_packet_tstamp(nestegg_packet * pkt, uint64_t * tstamp)
 {
   *tstamp = pkt->timecode;
+  return 0;
+}
+
+int
+nestegg_packet_duration(nestegg_packet * pkt, uint64_t * duration)
+{
+  *duration = pkt->duration;
   return 0;
 }
 
