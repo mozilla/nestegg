@@ -66,6 +66,7 @@
 #define ID_CODEC_PRIVATE        0x63a2
 #define ID_CODEC_DELAY          0x56aa
 #define ID_SEEK_PREROLL         0x56bb
+#define ID_DEFAULT_DURATION     0x23e383
 
 /* Video Elements */
 #define ID_VIDEO                0xe0
@@ -236,6 +237,7 @@ struct track_entry {
   struct ebml_type codec_private;
   struct ebml_type codec_delay;
   struct ebml_type seek_preroll;
+  struct ebml_type default_duration;
   struct video video;
   struct audio audio;
 };
@@ -310,6 +312,7 @@ struct nestegg {
 struct nestegg_packet {
   uint64_t track;
   uint64_t timecode;
+  uint64_t duration;
   struct frame * frame;
   int64_t discard_padding;
 };
@@ -419,6 +422,7 @@ static struct ebml_element_desc ne_track_entry_elements[] = {
   E_FIELD(ID_CODEC_PRIVATE, TYPE_BINARY, struct track_entry, codec_private),
   E_FIELD(ID_CODEC_DELAY, TYPE_UINT, struct track_entry, codec_delay),
   E_FIELD(ID_SEEK_PREROLL, TYPE_UINT, struct track_entry, seek_preroll),
+  E_FIELD(ID_DEFAULT_DURATION, TYPE_UINT, struct track_entry, default_duration),
   E_SINGLE_MASTER(ID_VIDEO, TYPE_MASTER, struct track_entry, video),
   E_SINGLE_MASTER(ID_AUDIO, TYPE_MASTER, struct track_entry, audio),
   E_LAST
@@ -1377,6 +1381,34 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
 }
 
 static int
+ne_read_block_duration(nestegg * ctx, nestegg_packet * pkt)
+{
+  int r;
+  uint64_t id, size;
+  struct ebml_element_desc * element;
+  struct ebml_type * storage;
+
+  r = ne_peek_element(ctx, &id, &size);
+  if (r != 1)
+    return r;
+
+  if (id != ID_BLOCK_DURATION)
+    return 1;
+
+  element = ne_find_element(id, ctx->ancestor->node);
+  if (!element)
+    return 1;
+
+  r = ne_read_simple(ctx, element, size);
+  if (r != 1)
+    return r;
+  storage = (struct ebml_type *) (ctx->ancestor->data + element->offset);
+  pkt->duration = storage->v.i * ne_get_timecode_scale(ctx);
+
+  return 1;
+}
+
+static int
 ne_read_discard_padding(nestegg * ctx, nestegg_packet * pkt)
 {
   int r;
@@ -2168,6 +2200,24 @@ nestegg_track_audio_params(nestegg * ctx, unsigned int track,
 }
 
 int
+nestegg_track_default_duration(nestegg * ctx, unsigned int track,
+                               uint64_t * duration)
+{
+  struct track_entry * entry;
+  uint64_t value;
+
+  entry = ne_find_track_entry(ctx, track);
+  if (!entry)
+    return -1;
+
+  if (ne_get_uint(entry->default_duration, &value) != 0)
+    return -1;
+  *duration = value;
+
+  return 0;
+}
+
+int
 nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
 {
   int r;
@@ -2189,6 +2239,10 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
       /* The only DESC_FLAG_SUSPEND fields are Blocks and SimpleBlocks, which we
          handle directly. */
       r = ne_read_block(ctx, id, size, pkt);
+      if (r != 1)
+        return r;
+
+      r = ne_read_block_duration(ctx, *pkt);
       if (r != 1)
         return r;
 
@@ -2233,6 +2287,13 @@ int
 nestegg_packet_tstamp(nestegg_packet * pkt, uint64_t * tstamp)
 {
   *tstamp = pkt->timecode;
+  return 0;
+}
+
+int
+nestegg_packet_duration(nestegg_packet * pkt, uint64_t * duration)
+{
+  *duration = pkt->duration;
   return 0;
 }
 
