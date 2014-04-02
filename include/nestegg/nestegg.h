@@ -363,6 +363,13 @@ int nestegg_has_cues(nestegg * context);
  * @retval 1 The file is a WebM file. */
 int nestegg_sniff(unsigned char const * buffer, size_t length);
 
+/**
+ * Set the underlying allocation function for library allocations.
+ *
+ * @param func The desired function..
+ */
+void nestegg_set_halloc_func(realloc_t func);
+
 #if defined(__cplusplus)
 }
 #endif

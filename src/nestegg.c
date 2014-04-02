@@ -2407,3 +2407,8 @@ nestegg_sniff(unsigned char const * buffer, size_t length)
   return ne_match_webm(io, length);
 }
 
+void
+nestegg_set_halloc_func(realloc_t func)
+{
+  halloc_allocator = func;
+}
