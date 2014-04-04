@@ -283,7 +283,7 @@ int nestegg_track_audio_params(nestegg * context, unsigned int track,
     @param duration Storage for the default duration in nanoseconds.
     @retval  0 Success.
     @retval -1 Error. */
-int nestegg_track_default_duration(nestegg * ctx, unsigned int track,
+int nestegg_track_default_duration(nestegg * context, unsigned int track,
                                    uint64_t * duration);
 
 /** Read a packet of media data.  A packet consists of one or more chunks of
@@ -317,7 +317,7 @@ int nestegg_packet_tstamp(nestegg_packet * packet, uint64_t * tstamp);
 
 /** Query the duration in nanoseconds of @a packet.
     @param packet Packet initialized by #nestegg_read_packet.
-    @param tstamp Storage for the queried duration in nanoseconds.
+    @param duration Storage for the queried duration in nanoseconds.
     @retval  0 Success.
     @retval -1 Error. */
 int nestegg_packet_duration(nestegg_packet * packet, uint64_t * duration);
