@@ -366,9 +366,9 @@ int nestegg_sniff(unsigned char const * buffer, size_t length);
 /**
  * Set the underlying allocation function for library allocations.
  *
- * @param func The desired function.
+ * @param realloc_func The desired function.
  */
-void nestegg_set_halloc_func(realloc_t func);
+void nestegg_set_halloc_func(void * (* realloc_func)(void *, size_t));
 
 #if defined(__cplusplus)
 }

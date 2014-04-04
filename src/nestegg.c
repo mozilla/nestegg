@@ -2408,7 +2408,7 @@ nestegg_sniff(unsigned char const * buffer, size_t length)
 }
 
 void
-nestegg_set_halloc_func(realloc_t func)
+nestegg_set_halloc_func(void * (* realloc_func)(void *, size_t))
 {
-  halloc_allocator = func;
+  halloc_allocator = realloc_func;
 }
