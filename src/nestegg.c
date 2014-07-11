@@ -44,16 +44,16 @@
 #define ID_TIMECODE             0xe7
 #define ID_BLOCK_GROUP          0xa0
 #define ID_SIMPLE_BLOCK         0xa3
-#define ID_BLOCK_MORE           0xa6
 
 /* BlockGroup Elements */
 #define ID_BLOCK                0xa1
+#define ID_BLOCK_ADDITIONS      0x75a1
 #define ID_BLOCK_DURATION       0x9b
 #define ID_REFERENCE_BLOCK      0xfb
 #define ID_DISCARD_PADDING      0x75a2
 
 /* BlockAdditions Elements */
-#define ID_BLOCK_ADDITIONS      0x75a1
+#define ID_BLOCK_MORE           0xa6
 
 /* BlockMore Elements */
 #define ID_BLOCK_ADD_ID         0xee
@@ -209,16 +209,15 @@ struct block_more {
   struct ebml_type block_additional;
 };
 
-struct block_additions
-{
-	struct ebml_list block_more;
+struct block_additions {
+  struct ebml_list block_more;
 };
 
 struct block_group {
+  struct ebml_type block_additions;
   struct ebml_type duration;
   struct ebml_type reference_block;
   struct ebml_type discard_padding;
-  struct ebml_type block_additions;
 };
 
 struct cluster {
@@ -409,10 +408,9 @@ static struct ebml_element_desc ne_block_more_elements[] = {
   E_LAST
 };
 
-static struct ebml_element_desc ne_block_additions_elements[] =
-{
-	E_MASTER(ID_BLOCK_MORE, TYPE_MASTER, struct block_additions, block_more),
-	E_LAST
+static struct ebml_element_desc ne_block_additions_elements[] = {
+  E_MASTER(ID_BLOCK_MORE, TYPE_MASTER, struct block_additions, block_more),
+  E_LAST
 };
 
 static struct ebml_element_desc ne_block_group_elements[] = {
@@ -1399,7 +1397,6 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
     return -1;
   pkt->track = track;
   pkt->timecode = abs_timecode * tc_scale * track_scale;
-  pkt->block_additional = NULL;
 
   ctx->log(ctx, NESTEGG_LOG_DEBUG, "%sblock t %lld pts %f f %llx frames: %llu",
            block_id == ID_BLOCK ? "" : "simple", pkt->track, pkt->timecode / 1e9, flags, frames);
@@ -1506,8 +1503,6 @@ ne_read_block_additions(nestegg * ctx, nestegg_packet * pkt)
   int64_t block_additions_end, block_more_end;
   void * data;
   int has_data;
-  /*struct ebml_element_desc * element;
-  struct ebml_list_node * block_more;*/
   struct block_additional * block_additional;
   uint64_t add_id;
 
@@ -1560,17 +1555,15 @@ ne_read_block_additions(nestegg * ctx, nestegg_packet * pkt)
           return r;
         }
 
-        if (add_id == 0)
-        {
+        if (add_id == 0) {
           ctx->log(ctx, NESTEGG_LOG_ERROR, "Disallowed BlockAddId 0 used");
           free(data);
           return -1;
         }
-      }
-      else if (id == ID_BLOCK_ADDITIONAL) {
+      } else if (id == ID_BLOCK_ADDITIONAL) {
         if (has_data) {
           /* BlockAdditional is supposed to only occur once in a
-          * BlockMore. */
+             BlockMore. */
           ctx->log(ctx, NESTEGG_LOG_ERROR,
                    "Multiple BlockAdditional elements in a BlockMore");
           free(data);
@@ -1587,8 +1580,7 @@ ne_read_block_additions(nestegg * ctx, nestegg_packet * pkt)
             return r;
           }
         }
-      }
-      else {
+      } else {
         /* We don't know what this element is, so skip over it */
         if (id != ID_VOID && id != ID_CRC32)
           ctx->log(ctx, NESTEGG_LOG_DEBUG,
@@ -1613,7 +1605,6 @@ ne_read_block_additions(nestegg * ctx, nestegg_packet * pkt)
 
   return 1;
 }
-
 
 static uint64_t
 ne_buf_read_id(unsigned char const * p, size_t length)
@@ -1887,8 +1878,8 @@ ne_match_webm(nestegg_io io, int64_t max_offset)
   ne_ctx_push(ctx, ne_top_level_elements, ctx);
 
   /* we don't check the return value of ne_parse, that might fail because
-   * max_offset is not on a valid element end point. We only want to check
-   * the EBML ID and that the doctype is "webm". */
+     max_offset is not on a valid element end point. We only want to check
+     the EBML ID and that the doctype is "webm". */
   ne_parse(ctx, NULL, max_offset);
 
   if (ne_get_string(ctx->ebml.doctype, &doctype) != 0 ||
