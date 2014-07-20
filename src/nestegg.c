@@ -730,14 +730,16 @@ ne_read_string(nestegg * ctx, char ** val, uint64_t length)
   char * str;
   int r;
 
-  if (length == 0 || length > LIMIT_STRING)
+  if (length > LIMIT_STRING)
     return -1;
   str = ne_pool_alloc(length + 1, ctx->alloc_pool);
   if (!str)
     return -1;
-  r = ne_io_read(ctx->io, (unsigned char *) str, length);
-  if (r != 1)
-    return r;
+  if (length) {
+      r = ne_io_read(ctx->io, (unsigned char *) str, length);
+      if (r != 1)
+        return r;
+  }
   str[length] = '\0';
   *val = str;
   return 1;
