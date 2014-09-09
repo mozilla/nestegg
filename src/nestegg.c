@@ -79,7 +79,7 @@
 /* Video Elements */
 #define ID_VIDEO                0xe0
 #define ID_STEREO_MODE          0x53b8
-#define ID_ALPHA_MODE           0x53C0
+#define ID_ALPHA_MODE           0x53c0
 #define ID_PIXEL_WIDTH          0xb0
 #define ID_PIXEL_HEIGHT         0xba
 #define ID_PIXEL_CROP_BOTTOM    0x54aa
