@@ -39,3 +39,4 @@ stamp-h1
 test/test
 test/test.exe
 include/nestegg/nestegg-stdint.h
+docs/doxygen_sqlite3.db
