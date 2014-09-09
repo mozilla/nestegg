@@ -1463,6 +1463,7 @@ ne_read_block_duration(nestegg * ctx, nestegg_packet * pkt)
   r = ne_read_simple(ctx, element, size);
   if (r != 1)
     return r;
+
   storage = (struct ebml_type *) (ctx->ancestor->data + element->offset);
   pkt->duration = storage->v.i * ne_get_timecode_scale(ctx);
 
@@ -1491,6 +1492,7 @@ ne_read_discard_padding(nestegg * ctx, nestegg_packet * pkt)
   r = ne_read_simple(ctx, element, size);
   if (r != 1)
     return r;
+
   storage = (struct ebml_type *) (ctx->ancestor->data + element->offset);
   pkt->discard_padding = storage->v.i;
 
@@ -2419,7 +2421,7 @@ nestegg_track_default_duration(nestegg * ctx, unsigned int track,
 int
 nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
 {
-  int r;
+  int r, read_block = 0;
   uint64_t id, size;
 
   *pkt = NULL;
@@ -2441,19 +2443,27 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
       if (r != 1)
         return r;
 
-      r = ne_read_block_duration(ctx, *pkt);
-      if (r != 1)
-        return r;
+      read_block = 1;
 
-      r = ne_read_discard_padding(ctx, *pkt);
-      if (r != 1)
-        return r;
+      /* These are not valid elements of a SimpleBlock, only a full-blown
+         Block. */
+      if (id != ID_SIMPLE_BLOCK) {
+        r = ne_read_block_duration(ctx, *pkt);
+        if (r < 0)
+          return r;
 
-      r = ne_read_block_additions(ctx, *pkt);
-      if (r != 1)
-        return r;
+        r = ne_read_discard_padding(ctx, *pkt);
+        if (r < 0)
+          return r;
 
-      return r;
+        r = ne_read_block_additions(ctx, *pkt);
+        if (r < 0)
+          return r;
+      }
+
+      /* If we have read a block and hit EOS when reading optional block
+         subelements, don't report EOS until the next call. */
+      return read_block;
     }
 
     r =  ne_parse(ctx, NULL, -1);
