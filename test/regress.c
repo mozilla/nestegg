@@ -94,7 +94,7 @@ test(char const * path)
       sha1_init(&s);
       sha1_write(&s, (char const *) codec_data, length);
       print_hash(sha1_result(&s));
-      printf("\n");
+      printf(" %u\n", (unsigned int) length);
     }
     if (type == NESTEGG_TRACK_VIDEO) {
       nestegg_track_video_params(ctx, i, &vparams);
