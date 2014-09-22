@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+function do_test {
+  OUT=`mktemp`
+  test/regress "test/media/$1" > $OUT
+  cmp "test/media/$1.ok" $OUT
+  rm $OUT
+}
+
+do_test seek.webm

@@ -2,7 +2,7 @@ AUTOMAKE_OPTIONS = foreign 1.11 no-dist-gzip dist-xz subdir-objects
 ACLOCAL_AMFLAGS = -I m4
 
 AM_CPPFLAGS = -I$(top_srcdir)/include -I. -I$(top_srcdir)/halloc
-AM_CFLAGS = -ansi -pedantic -Wall -Wextra -Wno-long-long -O2
+AM_CFLAGS = -ansi -pedantic -Wall -Wextra -Wno-long-long -Wno-unused-parameter -O2 -g
 
 SUBDIRS = docs
 
@@ -36,10 +36,15 @@ src_libnestegg_la_SOURCES = \
 
 src_libnestegg_la_LDFLAGS = -export-symbols-regex '^nestegg_' -no-undefined
 
-check_PROGRAMS = test/test
+check_PROGRAMS = test/test test/regress
 
 test_test_SOURCES = test/test.c
 test_test_LDADD = src/libnestegg.la
+
+test_regress_SOURCES = test/regress.c
+test_regress_LDADD = src/libnestegg.la
+
+TESTS = test/regress.test
 
 DISTCLEANFILES = include/nestegg/nestegg-stdint.h
 
