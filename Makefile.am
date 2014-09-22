@@ -2,7 +2,7 @@ AUTOMAKE_OPTIONS = foreign 1.11 no-dist-gzip dist-xz subdir-objects
 ACLOCAL_AMFLAGS = -I m4
 
 AM_CPPFLAGS = -I$(top_srcdir)/include -I. -I$(top_srcdir)/halloc
-AM_CFLAGS = -ansi -pedantic -Wall -Wextra -Wno-long-long -O0 -g
+AM_CFLAGS = -ansi -pedantic -Wall -Wextra -Wno-long-long -O2
 
 SUBDIRS = docs
 
