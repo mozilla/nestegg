@@ -13,6 +13,16 @@
 
 #include "sha1.c"
 
+static void
+print_hash(uint8_t const * hash)
+{
+  int i;
+
+  for (i = 0; i < 20; i++) {
+    printf("%02x", hash[i]);
+  }
+}
+
 static int
 stdio_read(void * p, size_t length, void * file)
 {
@@ -48,9 +58,9 @@ test(char const * path)
   nestegg_packet * pkt;
   nestegg_video_params vparams;
   size_t length, size;
-  uint64_t duration, pkt_tstamp;
+  uint64_t duration = ~0, pkt_tstamp;
   unsigned char * codec_data, * ptr;
-  unsigned int i, j, tracks, pkt_cnt, pkt_track;
+  unsigned int i, j, tracks = 0, pkt_cnt, pkt_track;
   unsigned int data_items = 0;
   nestegg_io io = {
     stdio_read,
@@ -58,6 +68,7 @@ test(char const * path)
     stdio_tell,
     NULL
   };
+  sha1nfo s;
 
   fp = fopen(path, "rb");
   if (!fp)
@@ -72,17 +83,33 @@ test(char const * path)
 
   nestegg_track_count(ctx, &tracks);
   nestegg_duration(ctx, &duration);
+  printf("%u %llu\n", tracks, (unsigned long long) duration);
 
   for (i = 0; i < tracks; ++i) {
     type = nestegg_track_type(ctx, i);
     nestegg_track_codec_data_count(ctx, i, &data_items);
+    printf("%d %u\n", type, data_items);
     for (j = 0; j < data_items; ++j) {
       nestegg_track_codec_data(ctx, i, j, &codec_data, &length);
+      sha1_init(&s);
+      sha1_write(&s, (char const *) codec_data, length);
+      print_hash(sha1_result(&s));
+      printf("\n");
     }
     if (type == NESTEGG_TRACK_VIDEO) {
       nestegg_track_video_params(ctx, i, &vparams);
+      printf("%u %u %u %u %u %u %u %u %u %u\n",
+             vparams.stereo_mode, vparams.width, vparams.height,
+             vparams.display_width, vparams.display_height,
+             vparams.crop_bottom, vparams.crop_top,
+             vparams.crop_left, vparams.crop_right,
+             vparams.alpha_mode);
     } else if (type == NESTEGG_TRACK_AUDIO) {
       nestegg_track_audio_params(ctx, i, &aparams);
+      printf("%f %u %u %llu %llu\n",
+             aparams.rate, aparams.channels, aparams.depth,
+             (unsigned long long) aparams.codec_delay,
+             (unsigned long long) aparams.seek_preroll);
     }
   }
 
@@ -95,6 +122,10 @@ test(char const * path)
 
     for (i = 0; i < pkt_cnt; ++i) {
       nestegg_packet_data(pkt, i, &ptr, &size);
+      sha1_init(&s);
+      sha1_write(&s, (char const *) ptr, size);
+      printf(" ");
+      print_hash(sha1_result(&s));
       printf(" %u", (unsigned int) size);
     }
     printf("\n");
