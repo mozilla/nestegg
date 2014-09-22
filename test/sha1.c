@@ -1,7 +1,7 @@
 /* This code is public-domain - it is based on libcrypt
  * placed in the public domain by Wei Dai and other contributors.
  */
-// gcc -Wall -DSHA1TEST -o sha1test sha1.c && ./sha1test
+/* gcc -Wall -DSHA1TEST -o sha1test sha1.c && ./sha1test */
 
 #include <stdint.h>
 #include <string.h>
@@ -15,8 +15,8 @@
 # if __BYTE_ORDER__ ==  __ORDER_BIG_ENDIAN__
 # define SHA_BIG_ENDIAN
 # endif
-#else // ! defined __LITTLE_ENDIAN__
-# include <endian.h> // machine/endian.h
+#else /* ! defined __LITTLE_ENDIAN__ */
+# include <endian.h> /* machine/endian.h */
 # if __BYTE_ORDER__ ==  __ORDER_BIG_ENDIAN__
 #  define SHA_BIG_ENDIAN
 # endif
@@ -140,30 +140,32 @@ void sha1_write(sha1nfo *s, const char *data, size_t len) {
 }
 
 void sha1_pad(sha1nfo *s) {
-	// Implement SHA-1 padding (fips180-2 §5.1.1)
+	/* Implement SHA-1 padding (fips180-2 §5.1.1) */
 
-	// Pad with 0x80 followed by 0x00 until the end of the block
+	/* Pad with 0x80 followed by 0x00 until the end of the block */
 	sha1_addUncounted(s, 0x80);
 	while (s->bufferOffset != 56) sha1_addUncounted(s, 0x00);
 
-	// Append length in the last 8 bytes
-	sha1_addUncounted(s, 0); // We're only using 32 bit lengths
-	sha1_addUncounted(s, 0); // But SHA-1 supports 64 bit lengths
-	sha1_addUncounted(s, 0); // So zero pad the top bits
-	sha1_addUncounted(s, s->byteCount >> 29); // Shifting to multiply by 8
-	sha1_addUncounted(s, s->byteCount >> 21); // as SHA-1 supports bitstreams as well as
-	sha1_addUncounted(s, s->byteCount >> 13); // byte.
+	/* Append length in the last 8 bytes */
+	sha1_addUncounted(s, 0); /* We're only using 32 bit lengths */
+	sha1_addUncounted(s, 0); /* But SHA-1 supports 64 bit lengths */
+	sha1_addUncounted(s, 0); /* So zero pad the top bits */
+	sha1_addUncounted(s, s->byteCount >> 29); /* Shifting to multiply by 8 */
+	sha1_addUncounted(s, s->byteCount >> 21); /* as SHA-1 supports bitstreams as well as */
+	sha1_addUncounted(s, s->byteCount >> 13); /* byte. */
 	sha1_addUncounted(s, s->byteCount >> 5);
 	sha1_addUncounted(s, s->byteCount << 3);
 }
 
 uint8_t* sha1_result(sha1nfo *s) {
-	// Pad to complete the last block
+#ifndef SHA_BIG_ENDIAN
+	int i;
+#endif
+	/* Pad to complete the last block */
 	sha1_pad(s);
 
 #ifndef SHA_BIG_ENDIAN
-	// Swap byte order back
-	int i;
+	/* Swap byte order back */
 	for (i=0; i<5; i++) {
 		s->state[i]=
 			  (((s->state[i])<<24)& 0xff000000)
@@ -173,7 +175,7 @@ uint8_t* sha1_result(sha1nfo *s) {
 	}
 #endif
 
-	// Return pointer to hash (20 characters)
+	/* Return pointer to hash (20 characters) */
 	return (uint8_t*) s->state;
 }
 
@@ -184,15 +186,15 @@ void sha1_initHmac(sha1nfo *s, const uint8_t* key, int keyLength) {
 	uint8_t i;
 	memset(s->keyBuffer, 0, BLOCK_LENGTH);
 	if (keyLength > BLOCK_LENGTH) {
-		// Hash long keys
+		/* Hash long keys */
 		sha1_init(s);
 		for (;keyLength--;) sha1_writebyte(s, *key++);
 		memcpy(s->keyBuffer, sha1_result(s), HASH_LENGTH);
 	} else {
-		// Block length keys are used as is
+		/* Block length keys are used as is */
 		memcpy(s->keyBuffer, key, keyLength);
 	}
-	// Start inner hash
+	/* Start inner hash */
 	sha1_init(s);
 	for (i=0; i<BLOCK_LENGTH; i++) {
 		sha1_writebyte(s, s->keyBuffer[i] ^ HMAC_IPAD);
@@ -201,9 +203,9 @@ void sha1_initHmac(sha1nfo *s, const uint8_t* key, int keyLength) {
 
 uint8_t* sha1_resultHmac(sha1nfo *s) {
 	uint8_t i;
-	// Complete inner hash
+	/* Complete inner hash */
 	memcpy(s->innerHash,sha1_result(s),HASH_LENGTH);
-	// Calculate outer hash
+	/* Calculate outer hash */
 	sha1_init(s);
 	for (i=0; i<BLOCK_LENGTH; i++) sha1_writebyte(s, s->keyBuffer[i] ^ HMAC_OPAD);
 	for (i=0; i<HASH_LENGTH; i++) sha1_writebyte(s, s->innerHash[i]);
@@ -254,7 +256,7 @@ int main (int argc, char **argv) {
 	uint32_t a;
 	sha1nfo s;
 
-	// SHA tests
+	/* SHA tests */
 	printf("Test: FIPS 180-2 C.1 and RFC3174 7.3 TEST1\n");
 	printf("Expect:a9993e364706816aba3e25717850c26c9cd0d89d\n");
 	printf("Result:");
@@ -279,7 +281,7 @@ int main (int argc, char **argv) {
 	printHash(sha1_result(&s));
 	printf("\n\n");
 
-	// HMAC tests
+	/* HMAC tests */
 	printf("Test: FIPS 198a A.1\n");
 	printf("Expect:4f4ca3d5d68ba7cc0a1208c9c61e9c5da0403c0a\n");
 	printf("Result:");
@@ -312,7 +314,7 @@ int main (int argc, char **argv) {
 	printHash(sha1_resultHmac(&s));
 	printf("\n\n");
 
-	// Long tests
+	/* Long tests */
 	printf("Test: FIPS 180-2 C.3 and RFC3174 7.3 TEST3\n");
 	printf("Expect:34aa973cd4c4daa4f61eeb2bdbad27316534016f\n");
 	printf("Result:");

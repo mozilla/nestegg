@@ -11,6 +11,8 @@
 #include <stdint.h>
 #include "nestegg/nestegg.h"
 
+#include "sha1.c"
+
 static int
 stdio_read(void * p, size_t length, void * file)
 {
