@@ -9,3 +9,6 @@ function do_test {
 }
 
 do_test seek.webm
+do_test bug603918.webm
+do_test detodos.webm
+do_test split.webm
