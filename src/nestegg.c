@@ -771,8 +771,8 @@ ne_read_int(struct nestegg_io_buf * io, int64_t * val, uint64_t length)
     base = 1;
     base <<= length * 8 - 1;
     if (uval >= base) {
-        base = 1;
-        base <<= length * 8;
+      base = 1;
+      base <<= length * 8;
     } else {
       base = 0;
     }
@@ -819,9 +819,9 @@ ne_read_string(nestegg * ctx, char ** val, uint64_t length)
   if (!str)
     return -1;
   if (length) {
-      r = ne_io_read(ctx->io, (unsigned char *) str, length);
-      if (r != 1)
-        return r;
+    r = ne_io_read(ctx->io, (unsigned char *) str, length);
+    if (r != 1)
+      return r;
   }
   str[length] = '\0';
   *val = str;
@@ -1899,15 +1899,15 @@ ne_buffer_seek(int64_t offset, int whence, void * userdata)
   int64_t o = sb->offset;
 
   switch(whence) {
-    case NESTEGG_SEEK_SET:
-      o = offset;
-      break;
-    case NESTEGG_SEEK_CUR:
-      o += offset;
-      break;
-    case NESTEGG_SEEK_END:
-      o = sb->length + offset;
-      break;
+  case NESTEGG_SEEK_SET:
+    o = offset;
+    break;
+  case NESTEGG_SEEK_CUR:
+    o += offset;
+    break;
+  case NESTEGG_SEEK_END:
+    o = sb->length + offset;
+    break;
   }
 
   if (o < 0 || o > (int64_t) sb->length)
@@ -2352,35 +2352,35 @@ nestegg_track_codec_data(nestegg * ctx, unsigned int track, unsigned int item,
     return -1;
 
   if (nestegg_track_codec_id(ctx, track) != NESTEGG_CODEC_VORBIS
-    && nestegg_track_codec_id(ctx, track) != NESTEGG_CODEC_OPUS)
+      && nestegg_track_codec_id(ctx, track) != NESTEGG_CODEC_OPUS)
     return -1;
 
   if (ne_get_binary(entry->codec_private, &codec_private) != 0)
     return -1;
 
   if (nestegg_track_codec_id(ctx, track) == NESTEGG_CODEC_VORBIS) {
-      p = codec_private.data;
-      count = *p++ + 1;
+    p = codec_private.data;
+    count = *p++ + 1;
 
-      if (count > 3)
+    if (count > 3)
+      return -1;
+
+    i = 0;
+    total = 0;
+    while (--count) {
+      sizes[i] = ne_xiph_lace_value(&p);
+      total += sizes[i];
+      i += 1;
+    }
+    sizes[i] = codec_private.length - total - (p - codec_private.data);
+
+    for (i = 0; i < item; ++i) {
+      if (sizes[i] > LIMIT_FRAME)
         return -1;
-
-      i = 0;
-      total = 0;
-      while (--count) {
-        sizes[i] = ne_xiph_lace_value(&p);
-        total += sizes[i];
-        i += 1;
-      }
-      sizes[i] = codec_private.length - total - (p - codec_private.data);
-
-      for (i = 0; i < item; ++i) {
-        if (sizes[i] > LIMIT_FRAME)
-          return -1;
-        p += sizes[i];
-      }
-      *data = p;
-      *length = sizes[item];
+      p += sizes[i];
+    }
+    *data = p;
+    *length = sizes[item];
   } else {
     *data = codec_private.data;
     *length = codec_private.length;
@@ -2582,7 +2582,7 @@ nestegg_free_packet(nestegg_packet * pkt)
     free(block_additional);
   }
 
- free(pkt);
+  free(pkt);
 }
 
 int
@@ -2676,7 +2676,7 @@ int
 nestegg_has_cues(nestegg * ctx)
 {
   return ctx->segment.cues.cue_point.head ||
-         ne_find_seek_for_id(ctx->segment.seek_head.head, ID_CUES);
+    ne_find_seek_for_id(ctx->segment.seek_head.head, ID_CUES);
 }
 
 int
