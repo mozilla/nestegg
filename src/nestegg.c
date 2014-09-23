@@ -325,9 +325,9 @@ struct block_additional {
 
 struct nestegg_io_buf {
   nestegg_io io;
-  uint8_t buffer[NE_IO_BUFSZ];
+  unsigned char buffer[NE_IO_BUFSZ];
   size_t bufsz;
-  int32_t offset;
+  int offset;
 };
 
 /* Public (opaque) Structures */
@@ -561,7 +561,7 @@ ne_io_read(struct nestegg_io_buf * io, void * buffer, size_t length)
   int r;
   size_t avail;
 
-  assert(io->offset == -1 || (io->offset >= 0 && (uint32_t) io->offset < io->bufsz));
+  assert(io->offset == -1 || (io->offset >= 0 && (unsigned int) io->offset < io->bufsz));
 
   /* Too big to buffer, invalidate buffer and read through */
   if (length > io->bufsz) {
@@ -609,7 +609,7 @@ ne_io_read(struct nestegg_io_buf * io, void * buffer, size_t length)
   memcpy(buffer, io->buffer + io->offset, avail);
   io->offset += avail;
 
-  if ((uint32_t) io->offset == io->bufsz) {
+  if ((unsigned int) io->offset == io->bufsz) {
     io->offset = -1;
   }
 
@@ -643,7 +643,7 @@ ne_io_tell(struct nestegg_io_buf * io)
     return off;
   }
   assert(off >= (int64_t) io->bufsz - io->offset);
-  return off - io->bufsz + (uint32_t) io->offset;
+  return off - io->bufsz + (unsigned int) io->offset;
 }
 
 static int
