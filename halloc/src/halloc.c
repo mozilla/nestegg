@@ -190,14 +190,13 @@ int halloc_set_allocator(realloc_t realloc_func)
 	 *
 	 *	Thanks to Stan Tobias for pointing this tricky part out.
 	 */
-	if (! (p = malloc(1)))
+	if (! (p = realloc_func(NULL, 1)))
 		/* hmm */
 		return -1;
 		
 	if ((p = realloc_func(p, 0)))
 	{
 		/* realloc_func cannot be used as free() */
-		free(p);
 		return 0;
 	}
 	allocator = realloc_func;
