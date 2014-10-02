@@ -566,7 +566,9 @@ ne_io_read(struct nestegg_io_buf * io, void * buffer, size_t length)
   /* Too big to buffer, invalidate buffer and read through */
   if (length > io->bufsz) {
     if (io->offset != -1) {
-      r = io->io.seek(-(io->bufsz - io->offset), NESTEGG_SEEK_CUR, io->io.userdata);
+      off = (int64_t) io->bufsz - io->offset;
+      assert(off >= 0 && off <= io->bufsz);
+      r = io->io.seek(-off, NESTEGG_SEEK_CUR, io->io.userdata);
       if (r != 0) {
         return -1;
       }

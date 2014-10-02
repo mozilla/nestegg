@@ -39,7 +39,9 @@ static int
 stdio_seek(int64_t offset, int whence, void * file)
 {
   FILE * fp = file;
-  return fseek(fp, offset, whence);
+  long off = offset;
+  assert(off == offset);
+  return fseek(fp, off, whence);
 }
 
 static int64_t
