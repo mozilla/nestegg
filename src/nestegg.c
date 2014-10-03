@@ -567,7 +567,7 @@ ne_io_read(struct nestegg_io_buf * io, void * buffer, size_t length)
   if (length > io->bufsz) {
     if (io->offset != -1) {
       off = (int64_t) io->bufsz - io->offset;
-      assert(off >= 0 && off <= io->bufsz);
+      assert(off >= 0 && (size_t) off <= io->bufsz);
       r = io->io.seek(-off, NESTEGG_SEEK_CUR, io->io.userdata);
       if (r != 0) {
         return -1;
@@ -611,7 +611,7 @@ ne_io_read(struct nestegg_io_buf * io, void * buffer, size_t length)
   memcpy(buffer, io->buffer + io->offset, avail);
   io->offset += avail;
 
-  if ((unsigned int) io->offset == io->bufsz) {
+  if ((size_t) io->offset == io->bufsz) {
     io->offset = -1;
   }
 
@@ -645,7 +645,7 @@ ne_io_tell(struct nestegg_io_buf * io)
     return off;
   }
   assert(off >= (int64_t) io->bufsz - io->offset);
-  return off - io->bufsz + (unsigned int) io->offset;
+  return off - io->bufsz + (size_t) io->offset;
 }
 
 static int

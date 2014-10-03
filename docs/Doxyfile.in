@@ -10,4 +10,3 @@ WARN_NO_PARAMDOC       = YES
 INPUT                  = @top_srcdir@/include/nestegg
 EXCLUDE                = @top_srcdir@/include/nestegg/nestegg-stdint.h
 GENERATE_LATEX         = NO
-
