@@ -2070,7 +2070,7 @@ nestegg_get_cue_point(nestegg * ctx, unsigned int cluster_num, int64_t max_offse
     while (cue_pos_node) {
       assert(cue_pos_node->id == ID_CUE_TRACK_POSITIONS);
       pos = cue_pos_node->data;
-      for (track = 0; track < track_count; track++) {
+      for (track = 0; track < track_count; ++track) {
         if (ne_get_uint(pos->track, &track_number) != 0)
           return -1;
 
@@ -2081,12 +2081,12 @@ nestegg_get_cue_point(nestegg * ctx, unsigned int cluster_num, int64_t max_offse
           if (ne_get_uint(pos->cluster_position, &seek_pos) != 0)
             return -1;
           if (cluster_count == cluster_num) {
-            *start_pos = ctx->segment_offset+seek_pos;
+            *start_pos = ctx->segment_offset + seek_pos;
             if (ne_get_uint(cue_point->time, &time) != 0)
               return -1;
             *tstamp = time * tc_scale;
-          } else if (cluster_count == cluster_num+1) {
-            *end_pos = (ctx->segment_offset+seek_pos)-1;
+          } else if (cluster_count == cluster_num + 1) {
+            *end_pos = ctx->segment_offset + seek_pos - 1;
             range_obtained = 1;
             break;
           }
