@@ -97,28 +97,3 @@ if test $HAVE_DOXYGEN = "false"; then
 else
   doc_build="yes"
 fi
-
-AC_MSG_RESULT([
-------------------------------------------------------------------------
-  $PACKAGE $VERSION:  Automatic configuration OK.
-
-  General configuration:
-
-    API Documentation: .......... ${doc_build}
-
-  Installation paths:
-
-    libnestegg: .................. ${LIBDIR}
-    C header files: .............. ${INCLUDEDIR}/nestegg
-    Documentation: ............... ${DOCDIR}
-
-  Building:
-
-    Type 'make' to compile $PACKAGE.
-
-    Type 'make install' to install $PACKAGE.
-
-  Example programs will be built but not installed.
-------------------------------------------------------------------------
-])
-
