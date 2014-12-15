@@ -9,4 +9,5 @@ QUIET                  = YES
 WARN_NO_PARAMDOC       = YES
 INPUT                  = @top_srcdir@/include/nestegg
 EXCLUDE                = @top_srcdir@/include/nestegg/nestegg-stdint.h
+GENERATE_HTML          = YES
 GENERATE_LATEX         = NO
