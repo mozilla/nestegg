@@ -13,3 +13,4 @@ do_test bug603918.webm
 do_test detodos.webm
 do_test split.webm
 do_test demo_short.webm
+do_test seek_sub.webm

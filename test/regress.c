@@ -54,7 +54,7 @@ int
 test(char const * path)
 {
   FILE * fp;
-  int r, type;
+  int r, type, id;
   nestegg * ctx;
   nestegg_audio_params aparams;
   nestegg_packet * pkt;
@@ -89,8 +89,9 @@ test(char const * path)
 
   for (i = 0; i < tracks; ++i) {
     type = nestegg_track_type(ctx, i);
+    id = nestegg_track_codec_id(ctx, i);
     nestegg_track_codec_data_count(ctx, i, &data_items);
-    printf("%d %u\n", type, data_items);
+    printf("%d %d %u\n", type, id, data_items);
     for (j = 0; j < data_items; ++j) {
       nestegg_track_codec_data(ctx, i, j, &codec_data, &length);
       sha1_init(&s);
@@ -98,7 +99,8 @@ test(char const * path)
       print_hash(sha1_result(&s));
       printf(" %u\n", (unsigned int) length);
     }
-    if (type == NESTEGG_TRACK_VIDEO) {
+    switch (type) {
+    case NESTEGG_TRACK_VIDEO:
       nestegg_track_video_params(ctx, i, &vparams);
       printf("%u %u %u %u %u %u %u %u %u %u\n",
              vparams.stereo_mode, vparams.width, vparams.height,
@@ -106,12 +108,19 @@ test(char const * path)
              vparams.crop_bottom, vparams.crop_top,
              vparams.crop_left, vparams.crop_right,
              vparams.alpha_mode);
-    } else if (type == NESTEGG_TRACK_AUDIO) {
+      break;
+    case NESTEGG_TRACK_AUDIO:
       nestegg_track_audio_params(ctx, i, &aparams);
       printf("%f %u %u %llu %llu\n",
              aparams.rate, aparams.channels, aparams.depth,
              (unsigned long long) aparams.codec_delay,
              (unsigned long long) aparams.seek_preroll);
+      break;
+    case NESTEGG_TRACK_UNKNOWN:
+      printf("unknown track\n");
+      break;
+    default:
+      abort();
     }
   }
 
