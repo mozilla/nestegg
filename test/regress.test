@@ -3,7 +3,7 @@ set -e
 
 function do_test {
   OUT=`mktemp`
-  test/regress "${srcdir}/test/media/$1" > $OUT
+  test/regress "${srcdir}/test/media/$1" $2 > $OUT
   cmp "${srcdir}/test/media/$1.ok" $OUT
   rm $OUT
 }
@@ -14,3 +14,4 @@ do_test detodos.webm
 do_test split.webm
 do_test demo_short.webm
 do_test seek_sub.webm
+do_test bug1200148.webm -l

@@ -51,9 +51,10 @@ stdio_tell(void * fp)
 }
 
 int
-test(char const * path)
+test(char const * path, int limit)
 {
   FILE * fp;
+  int64_t read_limit = -1;
   int r, type, id;
   nestegg * ctx;
   nestegg_audio_params aparams;
@@ -76,10 +77,16 @@ test(char const * path)
   if (!fp)
     return EXIT_FAILURE;
 
+  if (limit) {
+    fseek(fp, 0, SEEK_END);
+    read_limit = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+  }
+
   io.userdata = fp;
 
   ctx = NULL;
-  r = nestegg_init(&ctx, io, NULL, -1);
+  r = nestegg_init(&ctx, io, NULL, read_limit);
   if (r != 0)
     return EXIT_FAILURE;
 
@@ -152,8 +159,12 @@ test(char const * path)
 int
 main(int argc, char * argv[])
 {
-  if (argc != 2)
+  int limit;
+
+  if (argc != 2 && argc != 3)
     return EXIT_FAILURE;
 
-  return test(argv[1]);
+  limit = argc == 3 && argv[2][0] == '-' && argv[2][1] == 'l';
+
+  return test(argv[1], limit);
 }
