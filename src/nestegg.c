@@ -771,6 +771,19 @@ ne_get_uint(struct ebml_type type, uint64_t * value)
 }
 
 static int
+ne_get_int(struct ebml_type type, int64_t * value)
+{
+  if (!type.read)
+    return -1;
+
+  assert(type.type == TYPE_INT);
+
+  *value = type.v.i;
+
+  return 0;
+}
+
+static int
 ne_get_float(struct ebml_type type, double * value)
 {
   if (!type.read)
@@ -1429,7 +1442,8 @@ ne_read_block_duration(nestegg * ctx, nestegg_packet * pkt)
   int r;
   uint64_t id, size;
   struct ebml_element_desc * element;
-  struct ebml_type * storage;
+  struct cluster * cluster;
+  struct block_group * block_group;
 
   r = ne_peek_element(ctx, &id, &size);
   if (r != 1)
@@ -1446,8 +1460,13 @@ ne_read_block_duration(nestegg * ctx, nestegg_packet * pkt)
   if (r != 1)
     return r;
 
-  storage = (struct ebml_type *) (ctx->ancestor->data + element->offset);
-  pkt->duration = storage->v.i * ne_get_timecode_scale(ctx);
+  assert(ctx->segment.cluster.tail->id == ID_CLUSTER);
+  cluster = ctx->segment.cluster.tail->data;
+  assert(cluster->block_group.tail->id == ID_BLOCK_GROUP);
+  block_group = cluster->block_group.tail->data;
+
+  if (ne_get_uint(block_group->duration, &pkt->duration) == 0)
+    pkt->duration *= ne_get_timecode_scale(ctx);
 
   return 1;
 }
@@ -1458,7 +1477,8 @@ ne_read_discard_padding(nestegg * ctx, nestegg_packet * pkt)
   int r;
   uint64_t id, size;
   struct ebml_element_desc * element;
-  struct ebml_type * storage;
+  struct cluster * cluster;
+  struct block_group * block_group;
 
   r = ne_peek_element(ctx, &id, &size);
   if (r != 1)
@@ -1475,8 +1495,12 @@ ne_read_discard_padding(nestegg * ctx, nestegg_packet * pkt)
   if (r != 1)
     return r;
 
-  storage = (struct ebml_type *) (ctx->ancestor->data + element->offset);
-  pkt->discard_padding = storage->v.i;
+  assert(ctx->segment.cluster.tail->id == ID_CLUSTER);
+  cluster = ctx->segment.cluster.tail->data;
+  assert(cluster->block_group.tail->id == ID_BLOCK_GROUP);
+  block_group = cluster->block_group.tail->data;
+
+  ne_get_int(block_group->discard_padding, &pkt->discard_padding);
 
   return 1;
 }
