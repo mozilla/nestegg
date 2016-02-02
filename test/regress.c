@@ -60,9 +60,10 @@ test(char const * path, int limit)
   nestegg_audio_params aparams;
   nestegg_packet * pkt;
   nestegg_video_params vparams;
-  size_t length, size;
-  uint64_t duration = ~0, pkt_tstamp;
-  unsigned char * codec_data, * ptr;
+  size_t length, size, pkt_additional_length;
+  uint64_t duration = ~0, pkt_tstamp, pkt_duration;
+  int64_t pkt_discard_padding;
+  unsigned char * codec_data, * ptr, * pkt_additional;
   unsigned int i, j, tracks = 0, pkt_cnt, pkt_track;
   unsigned int data_items = 0;
   nestegg_io io = {
@@ -135,8 +136,25 @@ test(char const * path, int limit)
     nestegg_packet_track(pkt, &pkt_track);
     nestegg_packet_count(pkt, &pkt_cnt);
     nestegg_packet_tstamp(pkt, &pkt_tstamp);
+    pkt_duration = 0;
+    nestegg_packet_duration(pkt, &pkt_duration);
+    pkt_discard_padding = 0;
+    nestegg_packet_discard_padding(pkt, &pkt_discard_padding);
+    pkt_additional = NULL;
+    nestegg_packet_additional_data(pkt, 1, &pkt_additional, &pkt_additional_length);
 
     printf("%u %llu %u", pkt_track, (unsigned long long) pkt_tstamp, pkt_cnt);
+    if (pkt_duration != 0)
+      printf(" %llu", (unsigned long long) pkt_duration);
+    if (pkt_discard_padding != 0)
+      printf(" %lld", (long long) pkt_discard_padding);
+    if (pkt_additional) {
+      sha1_init(&s);
+      sha1_write(&s, (char const *) pkt_additional, pkt_additional_length);
+      printf(" ");
+      print_hash(sha1_result(&s));
+      printf(" %u", (unsigned int) pkt_additional_length);
+    }
 
     for (i = 0; i < pkt_cnt; ++i) {
       nestegg_packet_data(pkt, i, &ptr, &size);
