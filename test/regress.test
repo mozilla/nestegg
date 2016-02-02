@@ -16,3 +16,4 @@ do_test demo_short.webm
 do_test seek_sub.webm
 do_test bug1200148.webm -l
 do_test dancer1.webm
+do_test dancer1rb.webm
