@@ -11,7 +11,6 @@ EXTRA_DIST = \
 	nestegg-uninstalled.pc.in \
 	m4/as-ac-expand.m4 \
 	m4/pkg.m4 \
-	m4/ax_create_stdint_h.m4 \
 	halloc/src/halloc.c \
 	halloc/halloc.h \
 	halloc/src/align.h \
@@ -22,7 +21,7 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = nestegg.pc
 
 nesteggincludedir = $(includedir)/nestegg
-nestegginclude_HEADERS = include/nestegg/nestegg.h include/nestegg/nestegg-stdint.h
+nestegginclude_HEADERS = include/nestegg/nestegg.h
 
 lib_LTLIBRARIES = src/libnestegg.la
 
@@ -45,8 +44,6 @@ test_regress_SOURCES = test/regress.c
 test_regress_LDADD = src/libnestegg.la
 
 TESTS = test/regress.test
-
-DISTCLEANFILES = include/nestegg/nestegg-stdint.h
 
 dist-hook:
 	find $(distdir) -type d -name '.git' | xargs rm -rf
