@@ -1558,9 +1558,11 @@ ne_read_block_additions(nestegg * ctx, nestegg_packet * pkt)
 
         has_data = 1;
         data_size = size;
-        if (size != 0) {
-          data = ne_alloc(size);
-          r = ne_io_read(ctx->io, data, size);
+        if (data_size != 0 && data_size < LIMIT_FRAME) {
+          data = ne_alloc(data_size);
+          if (!data)
+            return -1;
+          r = ne_io_read(ctx->io, data, data_size);
           if (r != 1) {
             free(data);
             return r;
