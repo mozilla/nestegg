@@ -73,15 +73,16 @@ test(char const * path, int limit, int resume)
   FILE * fp;
   int64_t read_limit = -1;
   int64_t true_eos = -1;
-  int r, type, id, pkt_keyframe;
+  int r, type, id, track_encoding, pkt_keyframe, pkt_encryption;
   nestegg * ctx;
   nestegg_audio_params aparams;
   nestegg_packet * pkt;
   nestegg_video_params vparams;
-  size_t length, size, pkt_additional_length;
+  size_t length;
   uint64_t duration = ~0, pkt_tstamp, pkt_duration;
   int64_t pkt_discard_padding, pkt_reference_block;
   unsigned char * codec_data, * ptr, * pkt_additional;
+  unsigned char const * track_content_enc_key_id, * pkt_encryption_iv;
   unsigned int i, j, tracks = 0, pkt_cnt, pkt_track;
   unsigned int data_items = 0;
   nestegg_io io = {
@@ -123,7 +124,17 @@ test(char const * path, int limit, int resume)
     type = nestegg_track_type(ctx, i);
     id = nestegg_track_codec_id(ctx, i);
     nestegg_track_codec_data_count(ctx, i, &data_items);
-    printf("%d %d %u\n", type, id, data_items);
+    track_encoding = nestegg_track_encoding(ctx, i);
+    printf("%d %d %u %u", type, id, data_items, track_encoding);
+    if (track_encoding == NESTEGG_ENCODING_ENCRYPTION) {
+      nestegg_track_content_enc_key_id(ctx, i, &track_content_enc_key_id, &length);
+      sha1_init(&s);
+      sha1_write(&s, (char const *) track_content_enc_key_id, length);
+      printf(" ");
+      print_hash(sha1_result(&s));
+      printf(" %u", (unsigned int) length);
+    }
+    printf("\n");
     for (j = 0; j < data_items; ++j) {
       nestegg_track_codec_data(ctx, i, j, &codec_data, &length);
       sha1_init(&s);
@@ -182,9 +193,11 @@ test(char const * path, int limit, int resume)
     pkt_reference_block = 0;
     nestegg_packet_reference_block(pkt, &pkt_reference_block);
     pkt_additional = NULL;
-    nestegg_packet_additional_data(pkt, 1, &pkt_additional, &pkt_additional_length);
+    nestegg_packet_additional_data(pkt, 1, &pkt_additional, &length);
+    pkt_encryption = nestegg_packet_encryption(pkt);
 
-    printf("%u %d %llu %u", pkt_track, pkt_keyframe, (unsigned long long) pkt_tstamp, pkt_cnt);
+    printf("%u %d %llu %u %d", pkt_track, pkt_keyframe, (unsigned long long) pkt_tstamp, pkt_cnt,
+            pkt_encryption);
     if (pkt_duration != 0)
       printf(" %llu", (unsigned long long) pkt_duration);
     if (pkt_discard_padding != 0)
@@ -193,19 +206,27 @@ test(char const * path, int limit, int resume)
       printf(" %lld", (long long) pkt_reference_block);
     if (pkt_additional) {
       sha1_init(&s);
-      sha1_write(&s, (char const *) pkt_additional, pkt_additional_length);
+      sha1_write(&s, (char const *) pkt_additional, length);
       printf(" ");
       print_hash(sha1_result(&s));
-      printf(" %u", (unsigned int) pkt_additional_length);
+      printf(" %u", (unsigned int) length);
+    }
+    if (pkt_encryption == NESTEGG_PACKET_HAS_SIGNAL_BYTE_ENCRYPTED) {
+      nestegg_packet_iv(pkt, &pkt_encryption_iv, &length);
+      sha1_init(&s);
+      sha1_write(&s, (char const *) pkt_encryption_iv, length);
+      printf(" ");
+      print_hash(sha1_result(&s));
+      printf(" %u", (unsigned int) length);
     }
 
     for (i = 0; i < pkt_cnt; ++i) {
-      nestegg_packet_data(pkt, i, &ptr, &size);
+      nestegg_packet_data(pkt, i, &ptr, &length);
       sha1_init(&s);
-      sha1_write(&s, (char const *) ptr, size);
+      sha1_write(&s, (char const *) ptr, length);
       printf(" ");
       print_hash(sha1_result(&s));
-      printf(" %u", (unsigned int) size);
+      printf(" %u", (unsigned int) length);
     }
     printf("\n");
 
