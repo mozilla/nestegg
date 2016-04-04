@@ -89,6 +89,9 @@ extern "C" {
 #define NESTEGG_LOG_ERROR    1000  /**< Error level log message. */
 #define NESTEGG_LOG_CRITICAL 10000 /**< Critical level log message. */
 
+#define NESTEGG_ENCODING_COMPRESSION 0 /**< Content encoding type is compression. */
+#define NESTEGG_ENCODING_ENCRYPTION  1 /**< Content encoding type is encryption. */
+
 #define NESTEGG_PACKET_HAS_KEYFRAME_FALSE   0 /**< Packet contains only keyframes. */
 #define NESTEGG_PACKET_HAS_KEYFRAME_TRUE    1 /**< Packet does not contain any keyframes */
 #define NESTEGG_PACKET_HAS_KEYFRAME_UNKNOWN 2 /**< Packet may or may not contain keyframes */
@@ -151,6 +154,14 @@ typedef struct {
   uint64_t  codec_delay; /**< Nanoseconds that must be discarded from the start. */
   uint64_t  seek_preroll;/**< Nanoseconds that must be discarded after a seek. */
 } nestegg_audio_params;
+
+typedef struct {
+  unsigned int content_encoding_type;
+  unsigned int content_enc_algo;
+  unsigned int aes_settings_cipher_mode;
+  unsigned char * content_enc_key_id;
+  uint64_t enc_key_id_length;
+} nestegg_encryption_params;
 
 /** Logging callback function pointer. */
 typedef void (* nestegg_log)(nestegg * context, unsigned int severity, char const * format, ...);
@@ -288,6 +299,15 @@ int nestegg_track_video_params(nestegg * context, unsigned int track,
 int nestegg_track_audio_params(nestegg * context, unsigned int track,
                                nestegg_audio_params * params);
 
+/** Query encryption paramaters specified by @a track.
+    @param context Stream context initialized by #nestegg_init.
+    @param track   Zero based track number.
+    @param params  Storage for queried encryption params.
+    @retval  0 Success.
+    @retval -1 Error. */
+int nestegg_track_encryption(nestegg * context, unsigned int track,
+                              nestegg_encryption_params * encryption);
+
 /** Query the default frame duration for @a track.  For a video track, this
     is typically the inverse of the video frame rate.
     @param context  Stream context initialized by #nestegg_init.
@@ -386,6 +406,17 @@ int nestegg_packet_additional_data(nestegg_packet * packet, unsigned int id,
     @retval -1 Error. */
 int nestegg_packet_discard_padding(nestegg_packet * packet,
                                    int64_t * discard_padding);
+
+/** Query encryption information for a packet.
+    @param packet Packet initialized by #nestegg_read_packet.
+    @param iv     Storage for queried iv.
+    @param length Length of returned iv, may be 0.
+    @retval  0 No signal byte, encryption information not read from packet.
+    @retval  1 Encrypted bit set, encryption infomation read from packet.
+    @retval  2 Encrypted bit not set, encryption information not read from packet.
+    @retval -1 Error.*/
+int nestegg_packet_encryption(nestegg_packet * packet, unsigned char ** iv,
+                              size_t * length);
 
 /** Returns reference_block given packet
     @param packet          Packet initialized by #nestegg_read_packet.
