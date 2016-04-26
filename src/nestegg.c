@@ -175,6 +175,7 @@ struct ebml_type {
   } v;
   enum ebml_type_enum type;
   int read;
+  int64_t offset;
 };
 
 /* EBML Definitions */
@@ -282,14 +283,6 @@ struct list_node {
   unsigned char * data;
 };
 
-struct saved_state {
-  int64_t stream_offset;
-  struct list_node * ancestor;
-  uint64_t last_id;
-  uint64_t last_size;
-  int last_valid;
-};
-
 struct frame {
   unsigned char * data;
   size_t length;
@@ -327,6 +320,14 @@ struct nestegg_packet {
   struct block_additional * block_additional;
   int64_t discard_padding;
   int read_discard_padding;
+};
+
+struct nestegg_state {
+  int64_t stream_offset;
+  struct list_node * ancestor;
+  uint64_t last_id;
+  uint64_t last_size;
+  int last_valid;
 };
 
 /* Element Descriptor */
@@ -824,7 +825,7 @@ ne_ctx_pop(nestegg * ctx)
 }
 
 static int
-ne_ctx_save(nestegg * ctx, struct saved_state * s)
+ne_ctx_save(nestegg * ctx, nestegg_state * s)
 {
   s->stream_offset = ne_io_tell(ctx->io);
   if (s->stream_offset < 0)
@@ -837,7 +838,7 @@ ne_ctx_save(nestegg * ctx, struct saved_state * s)
 }
 
 static int
-ne_ctx_restore(nestegg * ctx, struct saved_state * s)
+ne_ctx_restore(nestegg * ctx, nestegg_state * s)
 {
   int r;
 
@@ -954,9 +955,15 @@ ne_read_simple(nestegg * ctx, struct ebml_element_desc * desc, size_t length)
   storage = (struct ebml_type *) (ctx->ancestor->data + desc->offset);
 
   if (storage->read) {
-    ctx->log(ctx, NESTEGG_LOG_DEBUG, "element %llx (%s) already read, skipping",
+    ctx->log(ctx, NESTEGG_LOG_DEBUG, "element %llx (%s) already read",
              desc->id, desc->name);
-    return 0;
+    /* We do not need to re-read the element, however we do need to move the IO
+       position back to the original offset */
+    if (storage->offset >= 0) {
+      return ne_io_seek(ctx->io, storage->offset, NESTEGG_SEEK_SET);
+    } else {
+      return 0;
+    }
   }
 
   storage->type = desc->type;
@@ -985,8 +992,10 @@ ne_read_simple(nestegg * ctx, struct ebml_element_desc * desc, size_t length)
     break;
   }
 
-  if (r == 1)
+  if (r == 1) {
+    storage->offset = ne_io_tell(ctx->io);
     storage->read = 1;
+  }
 
   return r;
 }
@@ -1604,7 +1613,7 @@ ne_init_cue_points(nestegg * ctx, int64_t max_offset)
   struct ebml_list_node * node = ctx->segment.cues.cue_point.head;
   struct seek * found;
   uint64_t seek_pos, id;
-  struct saved_state state;
+  nestegg_state state;
 
   /* If there are no cues loaded, check for cues element in the seek head
      and load it. */
@@ -1877,6 +1886,69 @@ nestegg_destroy(nestegg * ctx)
   ne_pool_destroy(ctx->alloc_pool);
   free(ctx->io);
   free(ctx);
+}
+
+int
+nestegg_save_state(nestegg * ctx, nestegg_state ** state)
+{
+  struct list_node * item;
+  struct nestegg copy;
+  nestegg_state * s;
+
+  s = ne_alloc(sizeof(*s));
+  if (!s) {
+    return -1;
+  }
+
+  if (ne_ctx_save(ctx, s) < 0) {
+    free(s);
+    return -1;
+  }
+
+  copy.ancestor = NULL;
+  item = ctx->ancestor;
+  while (item) {
+    ne_ctx_push(&copy, item->node, item->data);
+    item = item->previous;
+  }
+  /* ancestor now point to the first item of the context stack. */
+  s->ancestor = copy.ancestor;
+  *state = s;
+  return 0;
+}
+
+void
+nestegg_restore_state(nestegg * ctx, nestegg_state * s)
+{
+  struct nestegg copy;
+
+  if (!s->ancestor) {
+    free(s);
+    return;
+  }
+
+  while (ctx->ancestor)
+    ne_ctx_pop(ctx);
+
+  copy.ancestor = s->ancestor;
+  while (copy.ancestor) {
+    ne_ctx_push(ctx, copy.ancestor->node, copy.ancestor->data);
+    ne_ctx_pop(&copy);
+  }
+  s->ancestor = ctx->ancestor;
+  ne_ctx_restore(ctx, s);
+  free(s);
+  return;
+}
+
+void
+nestegg_destroy_state(nestegg_state * state)
+{
+  nestegg ctx;
+  ctx.ancestor = state->ancestor;
+  while (ctx.ancestor)
+    ne_ctx_pop(&ctx);
+  free(state);
 }
 
 int
