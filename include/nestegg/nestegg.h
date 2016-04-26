@@ -91,6 +91,7 @@ extern "C" {
 
 typedef struct nestegg nestegg;               /**< Opaque handle referencing the stream state. */
 typedef struct nestegg_packet nestegg_packet; /**< Opaque handle referencing a packet of data. */
+typedef struct nestegg_state nestegg_state;   /**< Opaque handle referencing the stream state backup. */
 
 /** User supplied IO context. */
 typedef struct {
@@ -388,6 +389,25 @@ int nestegg_sniff(unsigned char const * buffer, size_t length);
     @retval 0 Failure. realloc_func(p, 0) does not act as free()
     @retval -1 Failure. realloc_func(NULL, 1) failed. */
 int nestegg_set_halloc_func(void * (* realloc_func)(void *, size_t));
+
+/** Save a nestegg context. It is intended to resume a parsing operation.
+    @param context  Stream context initialized by #nestegg_init.
+    @param context  Storage for the new nestegg state backup
+                    @see nestegg_destroy_state.
+    @retval  0 Success.
+    @retval -1 Error. */
+int nestegg_save_state(nestegg * context, nestegg_state ** state);
+
+/** Restore a nestegg state backup allocated with nestegg_save_state
+    @param context  Stream context initialized by #nestegg_init.
+    @param state    State backup to be restored.  @see nestegg_save_state
+                    The state object will be freed upon exit and is no longer
+                    usable. */
+void nestegg_restore_state(nestegg * context, nestegg_state * state);
+
+/** Destroy a nestegg state backup allocated with nestegg_save_state
+    @param state    #nestegg state backup to be freed.  @see nestegg_save_state */
+void nestegg_destroy_state(nestegg_state * state);
 
 #if defined(__cplusplus)
 }
