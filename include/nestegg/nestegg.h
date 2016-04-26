@@ -8,7 +8,7 @@
 #define NESTEGG_671cac2a_365d_ed69_d7a3_4491d3538d79
 
 #include <limits.h>
-#include <nestegg/nestegg-stdint.h>
+#include <stdint.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -332,7 +332,7 @@ int nestegg_packet_duration(nestegg_packet * packet, uint64_t * duration);
 
 /** Query the number of data chunks contained in @a packet.
     @param packet Packet initialized by #nestegg_read_packet.
-    @param count  Storage for the queried timestamp in nanoseconds.
+    @param count  Storage for the queried chunk count.
     @retval  0 Success.
     @retval -1 Error. */
 int nestegg_packet_count(nestegg_packet * packet, unsigned int * count);

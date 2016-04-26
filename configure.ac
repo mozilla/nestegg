@@ -64,9 +64,6 @@ if test $HAVE_DOXYGEN = "false"; then
         AC_MSG_WARN([*** doxygen not found, API documentation will not be built])
 fi
 
-# Generate portable stdint.h replacement
-AX_CREATE_STDINT_H(include/nestegg/nestegg-stdint.h)
-
 # Test whenever ld supports -version-script
 AC_PROG_LD
 AC_PROG_LD_GNU
