@@ -955,15 +955,9 @@ ne_read_simple(nestegg * ctx, struct ebml_element_desc * desc, size_t length)
   storage = (struct ebml_type *) (ctx->ancestor->data + desc->offset);
 
   if (storage->read) {
-    ctx->log(ctx, NESTEGG_LOG_DEBUG, "element %llx (%s) already read",
+    ctx->log(ctx, NESTEGG_LOG_DEBUG, "element %llx (%s) already read, skipping",
              desc->id, desc->name);
-    /* We do not need to re-read the element, however we do need to move the IO
-       position back to the original offset */
-    if (storage->offset >= 0) {
-      return ne_io_seek(ctx->io, storage->offset, NESTEGG_SEEK_SET);
-    } else {
-      return 0;
-    }
+    return 0;
   }
 
   storage->type = desc->type;
@@ -1785,6 +1779,46 @@ ne_match_webm(nestegg_io io, int64_t max_offset)
   return 1;
 }
 
+static void
+ne_clear_element(struct ebml_element_desc * desc, unsigned char * data, int64_t stream_offset)
+{
+  struct ebml_type * storage;
+  struct ebml_element_desc * children;
+
+  if (!desc || !desc->name) {
+    return;
+  }
+
+  switch (desc->type) {
+  case TYPE_UINT:
+  case TYPE_FLOAT:
+  case TYPE_STRING:
+  case TYPE_BINARY:
+    storage = (struct ebml_type *) (data + desc->offset);
+    if (storage->offset >= stream_offset) {
+      storage->read = 0;
+      if (desc->type == TYPE_BINARY) {
+        h_free(storage->v.b.data);
+      } else if (desc->type == TYPE_STRING) {
+        h_free(storage->v.s);
+      }
+    }
+    break;
+
+  case TYPE_MASTER:
+    children = desc->children;
+    while (children->name) {
+      ne_clear_element(children, data, stream_offset);
+      children++;
+    }
+    break;
+  case TYPE_UNKNOWN:
+  default:
+    assert(0);
+    break;
+  }
+}
+
 int
 nestegg_init(nestegg ** context, nestegg_io io, nestegg_log callback, int64_t max_offset)
 {
@@ -1932,6 +1966,7 @@ nestegg_restore_state(nestegg * ctx, nestegg_state * s)
 
   copy.ancestor = s->ancestor;
   while (copy.ancestor) {
+    ne_clear_element(copy.ancestor->node, copy.ancestor->data, s->stream_offset);
     ne_ctx_push(ctx, copy.ancestor->node, copy.ancestor->data);
     ne_ctx_pop(&copy);
   }
