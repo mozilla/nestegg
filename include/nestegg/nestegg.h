@@ -392,7 +392,7 @@ int nestegg_set_halloc_func(void * (* realloc_func)(void *, size_t));
 
 /** Save a nestegg context. It is intended to resume a parsing operation.
     @param context  Stream context initialized by #nestegg_init.
-    @param context  Storage for the new nestegg state backup
+    @param state    Storage for the new nestegg state backup
                     @see nestegg_destroy_state.
     @retval  0 Success.
     @retval -1 Error. */
