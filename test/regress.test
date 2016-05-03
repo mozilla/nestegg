@@ -17,3 +17,12 @@ do_test seek_sub.webm
 do_test bug1200148.webm -l
 do_test dancer1.webm
 do_test dancer1rb.webm
+
+do_test seek.webm -r
+do_test bug603918.webm -r
+do_test detodos.webm -r
+do_test split.webm -r
+do_test demo_short.webm -r
+do_test seek_sub.webm -r
+do_test dancer1.webm -r
+do_test dancer1rb.webm -r

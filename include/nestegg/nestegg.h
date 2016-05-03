@@ -298,6 +298,12 @@ int nestegg_track_audio_params(nestegg * context, unsigned int track,
 int nestegg_track_default_duration(nestegg * context, unsigned int track,
                                    uint64_t * duration);
 
+/** Reset parser state to the last valid state before nestegg_read_packet failed.
+    @param context Stream context initialized by #nestegg_init.
+    @retval  0 Success.
+    @retval -1 Error. */
+int nestegg_read_reset(nestegg * context);
+
 /** Read a packet of media data.  A packet consists of one or more chunks of
     data associated with a single track.  nestegg_read_packet should be
     called in a loop while the return value is 1 to drive the stream parser

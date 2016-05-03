@@ -23,11 +23,21 @@ print_hash(uint8_t const * hash)
   }
 }
 
+static int64_t fake_eos = -1;
+
 static int
 stdio_read(void * p, size_t length, void * file)
 {
   size_t r;
   FILE * fp = file;
+
+  int64_t start_offset = ftell(fp);
+  int64_t end_offset = start_offset + length;
+
+  assert(fake_eos == -1 || start_offset <= fake_eos);
+  if (fake_eos != -1 && end_offset > fake_eos) {
+    return 0;
+  }
 
   r = fread(p, length, 1, fp);
   if (r == 0 && feof(fp))
@@ -41,20 +51,28 @@ stdio_seek(int64_t offset, int whence, void * file)
   FILE * fp = file;
   long off = offset;
   assert(off == offset);
+  /* Because the fake_eos stuff is lazy calculating offsets. */
+  assert(whence == SEEK_SET);
+  if (fake_eos != -1 && offset > fake_eos) {
+    return -1;
+  }
   return fseek(fp, off, whence);
 }
 
 static int64_t
 stdio_tell(void * fp)
 {
-  return ftell(fp);
+  int64_t offset = ftell(fp);
+  assert(fake_eos == -1 || offset <= fake_eos);
+  return offset;
 }
 
 int
-test(char const * path, int limit)
+test(char const * path, int limit, int resume)
 {
   FILE * fp;
   int64_t read_limit = -1;
+  int64_t true_eos = -1;
   int r, type, id, pkt_keyframe;
   nestegg * ctx;
   nestegg_audio_params aparams;
@@ -81,6 +99,12 @@ test(char const * path, int limit)
   if (limit) {
     fseek(fp, 0, SEEK_END);
     read_limit = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+  }
+
+  if (resume) {
+    fseek(fp, 0, SEEK_END);
+    true_eos = ftell(fp);
     fseek(fp, 0, SEEK_SET);
   }
 
@@ -132,7 +156,21 @@ test(char const * path, int limit)
     }
   }
 
-  while (nestegg_read_packet(ctx, &pkt) > 0) {
+  if (resume) {
+    fake_eos = ftell(fp);
+  }
+
+  for (;;) {
+    r = nestegg_read_packet(ctx, &pkt);
+    if (r == 0 && resume && fake_eos < true_eos) {
+      assert(fake_eos != -1 && true_eos != -1);
+      fake_eos += 1;
+      r = nestegg_read_reset(ctx);
+      assert(r == 0);
+      continue;
+    } else if (r <= 0) {
+      break;
+    }
     nestegg_packet_track(pkt, &pkt_track);
     pkt_keyframe = nestegg_packet_has_keyframe(pkt);
     nestegg_packet_count(pkt, &pkt_cnt);
@@ -182,12 +220,13 @@ test(char const * path, int limit)
 int
 main(int argc, char * argv[])
 {
-  int limit;
+  int limit, resume;
 
   if (argc != 2 && argc != 3)
     return EXIT_FAILURE;
 
   limit = argc == 3 && argv[2][0] == '-' && argv[2][1] == 'l';
+  resume = argc == 3 && argv[2][0] == '-' && argv[2][1] == 'r';
 
-  return test(argv[1], limit);
+  return test(argv[1], limit, resume);
 }
