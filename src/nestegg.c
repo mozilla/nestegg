@@ -2488,7 +2488,7 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
           }
         }
 
-        assert(read_block == (pkt != NULL));
+        assert(read_block == (*pkt != NULL));
         if (*pkt) {
           (*pkt)->duration = block_duration;
           (*pkt)->read_duration = read_block_duration;
