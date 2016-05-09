@@ -320,6 +320,8 @@ struct nestegg_packet {
   struct block_additional * block_additional;
   int64_t discard_padding;
   int read_discard_padding;
+  int64_t reference_block;
+  int read_reference_block;
 };
 
 struct nestegg_state {
@@ -2436,6 +2438,8 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
         int read_block_duration = 0;
         int64_t discard_padding = 0;
         int read_discard_padding = 0;
+        int64_t reference_block = 0;
+        int read_reference_block = 0;
         struct block_additional * block_additional = NULL;
 
         assert(id == ID_BLOCK_GROUP);
@@ -2482,6 +2486,13 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
               return r;
             break;
           }
+          case ID_REFERENCE_BLOCK: {
+            r = ne_read_int(ctx->io, &reference_block, size);
+            if (r < 0)
+              return r;
+            read_reference_block = 1;
+            break;
+          }
           default:
             /* We don't know what this element is, so skip over it */
             if (id != ID_VOID && id != ID_CRC32)
@@ -2497,6 +2508,8 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
           (*pkt)->read_duration = read_block_duration;
           (*pkt)->discard_padding = discard_padding;
           (*pkt)->read_discard_padding = read_discard_padding;
+          (*pkt)->reference_block = reference_block;
+          (*pkt)->read_reference_block = read_reference_block;
           (*pkt)->block_additional = block_additional;
         } else {
           free(block_additional);
@@ -2568,6 +2581,15 @@ nestegg_packet_discard_padding(nestegg_packet * pkt, int64_t * discard_padding)
   if (!pkt->read_discard_padding)
     return -1;
   *discard_padding = pkt->discard_padding;
+  return 0;
+}
+
+int
+nestegg_packet_reference_block(nestegg_packet * pkt, int64_t * reference_block)
+{
+  if (!pkt->read_reference_block)
+    return -1;
+  *reference_block = pkt->reference_block;
   return 0;
 }
 

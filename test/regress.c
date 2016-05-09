@@ -62,7 +62,7 @@ test(char const * path, int limit)
   nestegg_video_params vparams;
   size_t length, size, pkt_additional_length;
   uint64_t duration = ~0, pkt_tstamp, pkt_duration;
-  int64_t pkt_discard_padding;
+  int64_t pkt_discard_padding, pkt_reference_block;
   unsigned char * codec_data, * ptr, * pkt_additional;
   unsigned int i, j, tracks = 0, pkt_cnt, pkt_track;
   unsigned int data_items = 0;
@@ -140,6 +140,8 @@ test(char const * path, int limit)
     nestegg_packet_duration(pkt, &pkt_duration);
     pkt_discard_padding = 0;
     nestegg_packet_discard_padding(pkt, &pkt_discard_padding);
+    pkt_reference_block = 0;
+    nestegg_packet_reference_block(pkt, &pkt_reference_block);
     pkt_additional = NULL;
     nestegg_packet_additional_data(pkt, 1, &pkt_additional, &pkt_additional_length);
 
@@ -148,6 +150,8 @@ test(char const * path, int limit)
       printf(" %llu", (unsigned long long) pkt_duration);
     if (pkt_discard_padding != 0)
       printf(" %lld", (long long) pkt_discard_padding);
+    if (pkt_reference_block != 0)
+      printf(" %lld", (long long) pkt_reference_block);
     if (pkt_additional) {
       sha1_init(&s);
       sha1_write(&s, (char const *) pkt_additional, pkt_additional_length);
