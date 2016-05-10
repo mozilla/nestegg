@@ -316,8 +316,8 @@ void nestegg_free_packet(nestegg_packet * packet);
 
 /** Query the keyframe status for a given packet.
     @param packet Packet initialized by #nestegg_read_packet.
-    @retval #NESTEGG_PACKET_HAS_KEYFRAME_TRUE    Packet contains keyframes.
     @retval #NESTEGG_PACKET_HAS_KEYFRAME_FALSE   Packet contains no keyframes.
+    @retval #NESTEGG_PACKET_HAS_KEYFRAME_TRUE    Packet contains keyframes.
     @retval #NESTEGG_PACKET_HAS_KEYFRAME_UNKNOWN Unknown packet keyframe content.
     @retval -1 Error. */
 int nestegg_packet_has_keyframe(nestegg_packet * packet);
