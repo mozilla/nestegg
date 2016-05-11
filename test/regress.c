@@ -55,15 +55,16 @@ test(char const * path, int limit)
 {
   FILE * fp;
   int64_t read_limit = -1;
-  int r, type, id, pkt_keyframe;
+  int r, type, id, pkt_keyframe, pkt_encryption;
   nestegg * ctx;
   nestegg_audio_params aparams;
   nestegg_packet * pkt;
   nestegg_video_params vparams;
-  size_t length, size, pkt_additional_length;
+  nestegg_encryption_params encryption_params;
+  size_t length, size, pkt_additional_length, pkt_encryption_iv_length;
   uint64_t duration = ~0, pkt_tstamp, pkt_duration;
   int64_t pkt_discard_padding, pkt_reference_block;
-  unsigned char * codec_data, * ptr, * pkt_additional;
+  unsigned char * codec_data, * ptr, * pkt_additional, * pkt_encryption_iv;
   unsigned int i, j, tracks = 0, pkt_cnt, pkt_track;
   unsigned int data_items = 0;
   nestegg_io io = {
@@ -99,7 +100,8 @@ test(char const * path, int limit)
     type = nestegg_track_type(ctx, i);
     id = nestegg_track_codec_id(ctx, i);
     nestegg_track_codec_data_count(ctx, i, &data_items);
-    printf("%d %d %u\n", type, id, data_items);
+    nestegg_track_encryption(ctx, i, &encryption_params);
+    printf("%d %d %u %u\n", type, id, data_items, encryption_params.content_encoding_type);
     for (j = 0; j < data_items; ++j) {
       nestegg_track_codec_data(ctx, i, j, &codec_data, &length);
       sha1_init(&s);
@@ -145,8 +147,10 @@ test(char const * path, int limit)
     nestegg_packet_reference_block(pkt, &pkt_reference_block);
     pkt_additional = NULL;
     nestegg_packet_additional_data(pkt, 1, &pkt_additional, &pkt_additional_length);
+    pkt_encryption = nestegg_packet_encryption(pkt, &pkt_encryption_iv, &pkt_encryption_iv_length);
 
-    printf("%u %d %llu %u", pkt_track, pkt_keyframe, (unsigned long long) pkt_tstamp, pkt_cnt);
+    printf("%u %d %llu %u %d", pkt_track, pkt_keyframe, (unsigned long long) pkt_tstamp, pkt_cnt,
+            pkt_encryption);
     if (pkt_duration != 0)
       printf(" %llu", (unsigned long long) pkt_duration);
     if (pkt_discard_padding != 0)
@@ -159,6 +163,13 @@ test(char const * path, int limit)
       printf(" ");
       print_hash(sha1_result(&s));
       printf(" %u", (unsigned int) pkt_additional_length);
+    }
+    if (pkt_encryption == 1) {
+      sha1_init(&s);
+      sha1_write(&s, (char const *) pkt_encryption_iv, pkt_encryption_iv_length);
+      printf(" ");
+      print_hash(sha1_result(&s));
+      printf(" %u", (unsigned int) pkt_encryption_iv_length);
     }
 
     for (i = 0; i < pkt_cnt; ++i) {
