@@ -126,7 +126,8 @@ enum ebml_type_enum {
 #define DESC_FLAG_OFFSET        (1 << 2)
 
 /* Block Header Flags */
-#define BLOCK_FLAGS_LACING      6
+#define SIMPLE_BLOCK_FLAGS_KEYFRAME (1 << 7)
+#define BLOCK_FLAGS_LACING          6
 
 /* Lacing Constants */
 #define LACING_NONE             0
@@ -322,6 +323,7 @@ struct nestegg_packet {
   int read_discard_padding;
   int64_t reference_block;
   int read_reference_block;
+  uint8_t keyframe;
 };
 
 struct nestegg_state {
@@ -1245,6 +1247,7 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
   double track_scale;
   uint64_t track_number, length, frame_sizes[256], cluster_tc, flags, frames, tc_scale, total;
   unsigned int i, lacing, track;
+  uint8_t keyframe = NESTEGG_PACKET_HAS_KEYFRAME_UNKNOWN;
   size_t consumed = 0;
 
   *data = NULL;
@@ -1274,6 +1277,12 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
   consumed += 1;
 
   frames = 0;
+
+  /* Simple blocks have an explicit flag for if the contents a keyframes*/
+  if (block_id == ID_SIMPLE_BLOCK)
+    keyframe = (flags & SIMPLE_BLOCK_FLAGS_KEYFRAME) == SIMPLE_BLOCK_FLAGS_KEYFRAME ?
+                                                        NESTEGG_PACKET_HAS_KEYFRAME_TRUE :
+                                                        NESTEGG_PACKET_HAS_KEYFRAME_FALSE;
 
   /* Flags are different between Block and SimpleBlock, but lacing is
      encoded the same way. */
@@ -1354,6 +1363,7 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
     return -1;
   pkt->track = track;
   pkt->timecode = abs_timecode * tc_scale * track_scale;
+  pkt->keyframe = keyframe;
 
   ctx->log(ctx, NESTEGG_LOG_DEBUG, "%sblock t %lld pts %f f %llx frames: %llu",
            block_id == ID_BLOCK ? "" : "simple", pkt->track, pkt->timecode / 1e9, flags, frames);
@@ -2511,6 +2521,10 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
           (*pkt)->reference_block = reference_block;
           (*pkt)->read_reference_block = read_reference_block;
           (*pkt)->block_additional = block_additional;
+          if ((*pkt)->read_reference_block)
+            /* If a packet has a reference block it contains
+               predictive frames and no keyframes */
+            (*pkt)->keyframe = NESTEGG_PACKET_HAS_KEYFRAME_FALSE;
         } else {
           free(block_additional);
         }
@@ -2550,6 +2564,12 @@ nestegg_free_packet(nestegg_packet * pkt)
   }
 
   free(pkt);
+}
+
+int
+nestegg_packet_has_keyframe(nestegg_packet * pkt)
+{
+  return pkt->keyframe;
 }
 
 int

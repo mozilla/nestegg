@@ -55,7 +55,7 @@ test(char const * path, int limit)
 {
   FILE * fp;
   int64_t read_limit = -1;
-  int r, type, id;
+  int r, type, id, pkt_keyframe;
   nestegg * ctx;
   nestegg_audio_params aparams;
   nestegg_packet * pkt;
@@ -134,6 +134,7 @@ test(char const * path, int limit)
 
   while (nestegg_read_packet(ctx, &pkt) > 0) {
     nestegg_packet_track(pkt, &pkt_track);
+    pkt_keyframe = nestegg_packet_has_keyframe(pkt);
     nestegg_packet_count(pkt, &pkt_cnt);
     nestegg_packet_tstamp(pkt, &pkt_tstamp);
     pkt_duration = 0;
@@ -145,7 +146,7 @@ test(char const * path, int limit)
     pkt_additional = NULL;
     nestegg_packet_additional_data(pkt, 1, &pkt_additional, &pkt_additional_length);
 
-    printf("%u %llu %u", pkt_track, (unsigned long long) pkt_tstamp, pkt_cnt);
+    printf("%u %d %llu %u", pkt_track, pkt_keyframe, (unsigned long long) pkt_tstamp, pkt_cnt);
     if (pkt_duration != 0)
       printf(" %llu", (unsigned long long) pkt_duration);
     if (pkt_discard_padding != 0)

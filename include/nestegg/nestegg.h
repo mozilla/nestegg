@@ -89,6 +89,10 @@ extern "C" {
 #define NESTEGG_LOG_ERROR    1000  /**< Error level log message. */
 #define NESTEGG_LOG_CRITICAL 10000 /**< Critical level log message. */
 
+#define NESTEGG_PACKET_HAS_KEYFRAME_FALSE   0 /**< Packet contains only keyframes. */
+#define NESTEGG_PACKET_HAS_KEYFRAME_TRUE    1 /**< Packet does not contain any keyframes */
+#define NESTEGG_PACKET_HAS_KEYFRAME_UNKNOWN 2 /**< Packet may or may not contain keyframes */
+
 typedef struct nestegg nestegg;               /**< Opaque handle referencing the stream state. */
 typedef struct nestegg_packet nestegg_packet; /**< Opaque handle referencing a packet of data. */
 typedef struct nestegg_state nestegg_state;   /**< Opaque handle referencing the stream state backup. */
@@ -309,6 +313,14 @@ int nestegg_read_packet(nestegg * context, nestegg_packet ** packet);
 /** Destroy a nestegg_packet and free associated memory.
     @param packet #nestegg_packet to be freed. @see nestegg_read_packet */
 void nestegg_free_packet(nestegg_packet * packet);
+
+/** Query the keyframe status for a given packet.
+    @param packet Packet initialized by #nestegg_read_packet.
+    @retval #NESTEGG_PACKET_HAS_KEYFRAME_FALSE   Packet contains no keyframes.
+    @retval #NESTEGG_PACKET_HAS_KEYFRAME_TRUE    Packet contains keyframes.
+    @retval #NESTEGG_PACKET_HAS_KEYFRAME_UNKNOWN Unknown packet keyframe content.
+    @retval -1 Error. */
+int nestegg_packet_has_keyframe(nestegg_packet * packet);
 
 /** Query the track number of @a packet.
     @param packet Packet initialized by #nestegg_read_packet.
