@@ -109,10 +109,17 @@ main(int argc, char * argv[])
     return EXIT_FAILURE;
 
   nestegg_track_count(ctx, &tracks);
-  nestegg_duration(ctx, &duration);
+  r = nestegg_duration(ctx, &duration);
+  if (r == 0) {
 #if defined(DEBUG)
-  fprintf(stderr, "media has %u tracks and duration %fs\n", tracks, duration / 1e9);
+    fprintf(stderr, "media has %u tracks and duration %fs\n", tracks, duration / 1e9);
 #endif
+  } else {
+#if defined(DEBUG)
+    fprintf(stderr, "media has %u tracks and unknown duration, using 10s default\n", tracks);
+#endif
+    duration = 10000000000;
+  }
 
   for (i = 0; i < tracks; ++i) {
     type = nestegg_track_type(ctx, i);
