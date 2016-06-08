@@ -2077,7 +2077,7 @@ nestegg_duration(nestegg * ctx, uint64_t * duration)
 
   tc_scale = ne_get_timecode_scale(ctx);
 
-  if (unscaled_duration < 0 || unscaled_duration > UINT64_MAX / tc_scale)
+  if (unscaled_duration < 0 || (uint64_t) unscaled_duration > UINT64_MAX / tc_scale)
     return -1;
 
   *duration = (uint64_t) (unscaled_duration * tc_scale);
