@@ -1462,6 +1462,8 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
   track_scale = 1.0;
 
   tc_scale = ne_get_timecode_scale(ctx);
+  if (tc_scale == 0)
+    return -1;
 
   if (!ctx->read_cluster_timecode)
     return -1;
@@ -2076,8 +2078,11 @@ nestegg_duration(nestegg * ctx, uint64_t * duration)
     return -1;
 
   tc_scale = ne_get_timecode_scale(ctx);
+  if (tc_scale == 0)
+    return -1;
 
-  if (unscaled_duration < 0 || (uint64_t) unscaled_duration > UINT64_MAX / tc_scale)
+  if (unscaled_duration < 0 || unscaled_duration > (double) UINT64_MAX ||
+      (uint64_t) unscaled_duration > UINT64_MAX / tc_scale)
     return -1;
 
   *duration = (uint64_t) (unscaled_duration * tc_scale);
@@ -2088,6 +2093,8 @@ int
 nestegg_tstamp_scale(nestegg * ctx, uint64_t * scale)
 {
   *scale = ne_get_timecode_scale(ctx);
+  if (*scale == 0)
+    return -1;
   return 0;
 }
 
@@ -2130,6 +2137,8 @@ nestegg_get_cue_point(nestegg * ctx, unsigned int cluster_num, int64_t max_offse
   nestegg_track_count(ctx, &track_count);
 
   tc_scale = ne_get_timecode_scale(ctx);
+  if (tc_scale == 0)
+    return -1;
 
   while (cues_node && !range_obtained) {
     assert(cues_node->id == ID_CUE_POINT);
@@ -2205,6 +2214,8 @@ nestegg_track_seek(nestegg * ctx, unsigned int track, uint64_t tstamp)
   }
 
   tc_scale = ne_get_timecode_scale(ctx);
+  if (tc_scale == 0)
+    return -1;
 
   cue_point = ne_find_cue_point_for_tstamp(ctx, ctx->segment.cues.cue_point.head,
                                            track, tc_scale, tstamp);
@@ -2664,6 +2675,7 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
       int64_t reference_block = 0;
       int read_reference_block = 0;
       struct block_additional * block_additional = NULL;
+      uint64_t tc_scale;
 
       block_group_end = ne_io_tell(ctx->io) + size;
 
@@ -2686,7 +2698,10 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
           r = ne_read_uint(ctx->io, &block_duration, size);
           if (r != 1)
             return r;
-          block_duration *= ne_get_timecode_scale(ctx);
+          tc_scale = ne_get_timecode_scale(ctx);
+          if (tc_scale == 0)
+            return -1;
+          block_duration *= tc_scale;
           read_block_duration = 1;
           break;
         }
