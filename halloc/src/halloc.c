@@ -12,7 +12,7 @@
  *	http://www.opensource.org/licenses/bsd-license.php
  */
 
-#include <malloc.h>  /* realloc */
+#include <stdlib.h>  /* realloc */
 #include <string.h>  /* memset & co */
 
 #include "halloc.h"
