@@ -1539,6 +1539,7 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
         }
         r = ne_io_read(ctx->io, f->frame_encryption->iv, IV_SIZE);
         if (r != 1) {
+          free(f->frame_encryption->iv);
           free(f->frame_encryption);
           free(f);
           nestegg_free_packet(pkt);
