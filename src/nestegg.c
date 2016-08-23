@@ -2699,49 +2699,97 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
       /* Read the entire BlockGroup manually. */
       while (ne_io_tell(ctx->io) < block_group_end) {
         r = ne_read_element(ctx, &id, &size);
-        if (r != 1)
+        if (r != 1) {
+          free(block_additional);
+          if (*pkt) {
+            nestegg_free_packet(*pkt);
+            *pkt = NULL;
+          }
           return r;
+        }
 
         switch (id) {
         case ID_BLOCK: {
           r = ne_read_block(ctx, id, size, pkt);
-          if (r != 1)
+          if (r != 1) {
+            free(block_additional);
+            if (*pkt) {
+              nestegg_free_packet(*pkt);
+              *pkt = NULL;
+            }
             return r;
+          }
 
           read_block = 1;
           break;
         }
         case ID_BLOCK_DURATION: {
           r = ne_read_uint(ctx->io, &block_duration, size);
-          if (r != 1)
+          if (r != 1) {
+            free(block_additional);
+            if (*pkt) {
+              nestegg_free_packet(*pkt);
+              *pkt = NULL;
+            }
             return r;
+          }
           tc_scale = ne_get_timecode_scale(ctx);
-          if (tc_scale == 0)
+          if (tc_scale == 0) {
+            free(block_additional);
+            if (*pkt) {
+              nestegg_free_packet(*pkt);
+              *pkt = NULL;
+            }
             return -1;
+          }
           block_duration *= tc_scale;
           read_block_duration = 1;
           break;
         }
         case ID_DISCARD_PADDING: {
           r = ne_read_int(ctx->io, &discard_padding, size);
-          if (r != 1)
+          if (r != 1) {
+            free(block_additional);
+            if (*pkt) {
+              nestegg_free_packet(*pkt);
+              *pkt = NULL;
+            }
             return r;
+          }
           read_discard_padding = 1;
           break;
         }
         case ID_BLOCK_ADDITIONS: {
           /* There should only be one BlockAdditions; treat multiple as an error. */
-          if (block_additional)
+          if (block_additional) {
+            free(block_additional);
+            if (*pkt) {
+              nestegg_free_packet(*pkt);
+              *pkt = NULL;
+            }
             return -1;
+          }
           r = ne_read_block_additions(ctx, size, &block_additional);
-          if (r != 1)
+          if (r != 1) {
+            free(block_additional);
+            if (*pkt) {
+              nestegg_free_packet(*pkt);
+              *pkt = NULL;
+            }
             return r;
+          }
           break;
         }
         case ID_REFERENCE_BLOCK: {
           r = ne_read_int(ctx->io, &reference_block, size);
-          if (r != 1)
+          if (r != 1) {
+            free(block_additional);
+            if (*pkt) {
+              nestegg_free_packet(*pkt);
+              *pkt = NULL;
+            }
             return r;
+          }
           read_reference_block = 1;
           break;
         }
@@ -2751,8 +2799,14 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
             ctx->log(ctx, NESTEGG_LOG_DEBUG,
                      "read_packet: unknown element %llx in BlockGroup", id);
           r = ne_io_read_skip(ctx->io, size);
-          if (r != 1)
+          if (r != 1) {
+            free(block_additional);
+            if (*pkt) {
+              nestegg_free_packet(*pkt);
+              *pkt = NULL;
+            }
             return r;
+          }
         }
       }
 
