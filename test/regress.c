@@ -172,14 +172,17 @@ test(char const * path, int limit, int resume)
   }
 
   for (;;) {
+    pkt = NULL;
     r = nestegg_read_packet(ctx, &pkt);
     if (r == 0 && resume && fake_eos < true_eos) {
+      assert(pkt == NULL);
       assert(fake_eos != -1 && true_eos != -1);
       fake_eos += 1;
       r = nestegg_read_reset(ctx);
       assert(r == 0);
       continue;
     } else if (r <= 0) {
+      assert(pkt == NULL);
       break;
     }
     nestegg_packet_track(pkt, &pkt_track);
