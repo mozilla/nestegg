@@ -1,7 +1,7 @@
 AUTOMAKE_OPTIONS = foreign 1.11 no-dist-gzip dist-xz subdir-objects
 ACLOCAL_AMFLAGS = -I m4
 
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include -I. -I$(top_srcdir)/halloc
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include -I.
 AM_CFLAGS = -ansi -pedantic -Wall -Wextra -Wno-long-long -Wno-unused-parameter -O2 -g
 
 SUBDIRS = docs
@@ -10,12 +10,7 @@ EXTRA_DIST = \
 	AUTHORS README LICENSE \
 	nestegg-uninstalled.pc.in \
 	m4/as-ac-expand.m4 \
-	m4/pkg.m4 \
-	halloc/src/halloc.c \
-	halloc/halloc.h \
-	halloc/src/align.h \
-	halloc/src/hlist.h \
-	halloc/src/macros.h
+	m4/pkg.m4
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = nestegg.pc
@@ -26,12 +21,7 @@ nestegginclude_HEADERS = include/nestegg/nestegg.h
 lib_LTLIBRARIES = src/libnestegg.la
 
 src_libnestegg_la_SOURCES = \
-	src/nestegg.c \
-	halloc/src/halloc.c \
-	halloc/halloc.h \
-	halloc/src/align.h \
-	halloc/src/hlist.h \
-	halloc/src/macros.h
+	src/nestegg.c
 
 src_libnestegg_la_LDFLAGS = -export-symbols-regex '^nestegg_' -no-undefined
 

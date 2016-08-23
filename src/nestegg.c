@@ -5,10 +5,10 @@
  * accompanying file LICENSE for details.
  */
 #include <assert.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "halloc.h"
 #include "nestegg/nestegg.h"
 
 /* EBML Elements */
@@ -312,8 +312,13 @@ struct segment {
 };
 
 /* Misc. */
+struct pool_node {
+  struct pool_node * next;
+  void * data;
+};
+
 struct pool_ctx {
-  char dummy;
+  struct pool_node * head;
 };
 
 struct list_node {
@@ -551,26 +556,41 @@ static struct ebml_element_desc ne_top_level_elements[] = {
 static struct pool_ctx *
 ne_pool_init(void)
 {
-  return h_malloc(sizeof(struct pool_ctx));
+  return calloc(1, sizeof(struct pool_ctx));
 }
 
 static void
 ne_pool_destroy(struct pool_ctx * pool)
 {
-  h_free(pool);
+  struct pool_node * node = pool->head;
+  while (node) {
+    struct pool_node * old = node;
+    node = node->next;
+    free(old->data);
+    free(old);
+  }
+  free(pool);
 }
 
 static void *
 ne_pool_alloc(size_t size, struct pool_ctx * pool)
 {
-  void * p;
+  struct pool_node * node;
 
-  p = h_malloc(size);
-  if (!p)
+  node = calloc(1, sizeof(*node));
+  if (!node)
     return NULL;
-  hattach(p, pool);
-  memset(p, 0, size);
-  return p;
+
+  node->data = calloc(1, size);
+  if (!node->data) {
+    free(node);
+    return NULL;
+  }
+
+  node->next = pool->head;
+  pool->head = node;
+
+  return node->data;
 }
 
 static void *
@@ -2963,13 +2983,4 @@ nestegg_sniff(unsigned char const * buffer, size_t length)
   io.tell = ne_buffer_tell;
   io.userdata = &userdata;
   return ne_match_webm(io, length);
-}
-
-/* From halloc.c */
-int halloc_set_allocator(realloc_t realloc_func);
-
-int
-nestegg_set_halloc_func(void * (* realloc_func)(void *, size_t))
-{
-  return halloc_set_allocator(realloc_func);
 }
