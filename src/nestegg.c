@@ -2361,8 +2361,8 @@ nestegg_track_codec_data(nestegg * ctx, unsigned int track, unsigned int item,
   if (!entry)
     return -1;
 
-  if (nestegg_track_codec_id(ctx, track) != NESTEGG_CODEC_VORBIS
-      && nestegg_track_codec_id(ctx, track) != NESTEGG_CODEC_OPUS)
+  if (nestegg_track_codec_id(ctx, track) != NESTEGG_CODEC_VORBIS &&
+      nestegg_track_codec_id(ctx, track) != NESTEGG_CODEC_OPUS)
     return -1;
 
   if (ne_get_binary(entry->codec_private, &codec_private) != 0)
