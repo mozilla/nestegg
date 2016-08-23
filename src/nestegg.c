@@ -1070,7 +1070,6 @@ ne_read_simple(nestegg * ctx, struct ebml_element_desc * desc, size_t length)
   case TYPE_MASTER:
   case TYPE_UNKNOWN:
   default:
-    r = 0;
     assert(0);
     break;
   }
