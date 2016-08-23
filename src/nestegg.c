@@ -1900,11 +1900,8 @@ ne_buffer_tell(void * userdata)
 }
 
 static int
-ne_match_webm(nestegg_io io, int64_t max_offset)
+ne_context_new(nestegg ** context, nestegg_io io, nestegg_log callback)
 {
-  int r;
-  uint64_t id;
-  char * doctype;
   nestegg * ctx;
 
   if (!(io.read && io.seek && io.tell))
@@ -1920,12 +1917,30 @@ ne_match_webm(nestegg_io io, int64_t max_offset)
     return -1;
   }
   *ctx->io = io;
+  ctx->log = callback;
   ctx->alloc_pool = ne_pool_init();
   if (!ctx->alloc_pool) {
     nestegg_destroy(ctx);
     return -1;
   }
-  ctx->log = ne_null_log_callback;
+
+  if (!ctx->log)
+    ctx->log = ne_null_log_callback;
+
+  *context = ctx;
+  return 0;
+}
+
+static int
+ne_match_webm(nestegg_io io, int64_t max_offset)
+{
+  int r;
+  uint64_t id;
+  char * doctype;
+  nestegg * ctx;
+
+  if (ne_context_new(&ctx, io, NULL) != 0)
+    return -1;
 
   r = ne_peek_element(ctx, &id, NULL);
   if (r != 1) {
@@ -1967,28 +1982,8 @@ nestegg_init(nestegg ** context, nestegg_io io, nestegg_log callback, int64_t ma
   char * doctype;
   nestegg * ctx;
 
-  if (!(io.read && io.seek && io.tell))
+  if (ne_context_new(&ctx, io, callback) != 0)
     return -1;
-
-  ctx = ne_alloc(sizeof(*ctx));
-  if (!ctx)
-    return -1;
-
-  ctx->io = ne_alloc(sizeof(*ctx->io));
-  if (!ctx->io) {
-    nestegg_destroy(ctx);
-    return -1;
-  }
-  *ctx->io = io;
-  ctx->log = callback;
-  ctx->alloc_pool = ne_pool_init();
-  if (!ctx->alloc_pool) {
-    nestegg_destroy(ctx);
-    return -1;
-  }
-
-  if (!ctx->log)
-    ctx->log = ne_null_log_callback;
 
   r = ne_peek_element(ctx, &id, NULL);
   if (r != 1) {
