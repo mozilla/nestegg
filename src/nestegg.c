@@ -2349,13 +2349,9 @@ nestegg_track_codec_data(nestegg * ctx, unsigned int track, unsigned int item,
 {
   struct track_entry * entry;
   struct ebml_binary codec_private;
-  uint64_t sizes[3], size, total, avail;
-  unsigned char * p;
-  unsigned int count, i;
 
   *data = NULL;
   *length = 0;
-  count = 1;
 
   entry = ne_find_track_entry(ctx, track);
   if (!entry)
@@ -2369,41 +2365,50 @@ nestegg_track_codec_data(nestegg * ctx, unsigned int track, unsigned int item,
     return -1;
 
   if (nestegg_track_codec_id(ctx, track) == NESTEGG_CODEC_VORBIS) {
-    p = codec_private.data;
-    avail = codec_private.length;
-    if (avail < 1)
-      return -1;
+    uint64_t count;
+    uint64_t sizes[3], total;
+    unsigned char * p;
+    unsigned int i;
+    int r;
 
-    count = *p++ + 1;
-    avail -= 1;
+    nestegg_io io;
+    struct io_buffer userdata;
+    userdata.buffer = codec_private.data;
+    userdata.length = codec_private.length;
+    userdata.offset = 0;
 
-    if (count > 3 || item >= count)
-      return -1;
+    io.read = ne_buffer_read;
+    io.seek = ne_buffer_seek;
+    io.tell = ne_buffer_tell;
+    io.userdata = &userdata;
 
     total = 0;
-    for (i = 0; i < count - 1; ++i) {
-      size = 0;
-      do {
-        if (avail - total <= size) {
-          return -1;
-        }
-        size += *p;
-        avail -= 1;
-      } while (*p++ == 255);
-      if (avail - total < size)
-        return -1;
-      sizes[i] = size;
-      total += size;
-    }
-    sizes[i] = avail - total;
 
+    r = ne_read_uint(&io, &count, 1);
+    if (r != 1)
+      return r;
+    total += 1;
+    count += 1;
+
+    if (count > 3)
+      return -1;
+    r = ne_read_xiph_lacing(&io, codec_private.length, &total, count, sizes);
+    if (r != 1)
+      return r;
+
+    if (item >= count)
+      return -1;
+
+    p = codec_private.data + total;
     for (i = 0; i < item; ++i) {
       p += sizes[i];
     }
+    assert((size_t) (p - codec_private.data) <= codec_private.length &&
+           codec_private.length - (p - codec_private.data) >= sizes[item]);
     *data = p;
     *length = sizes[item];
   } else {
-    if (item >= count)
+    if (item >= 1)
       return -1;
 
     *data = codec_private.data;
