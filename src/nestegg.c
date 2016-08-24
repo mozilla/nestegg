@@ -1423,6 +1423,10 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
       return r;
     consumed += 1;
     frames += 1;
+    break;
+  default:
+    assert(0);
+    return -1;
   }
 
   if (frames > 256)
@@ -1452,6 +1456,9 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
     if (r != 1)
       return r;
     break;
+  default:
+    assert(0);
+    return -1;
   }
 
   /* Sanity check unlaced frame sizes against total block size. */
