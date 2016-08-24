@@ -1863,8 +1863,8 @@ ne_init_cue_points(nestegg * ctx, int64_t max_offset)
 }
 
 /* Three functions that implement the nestegg_io interface, operating on a
- * sniff_buffer. */
-struct sniff_buffer {
+   io_buffer. */
+struct io_buffer {
   unsigned char const * buffer;
   size_t length;
   int64_t offset;
@@ -1873,16 +1873,16 @@ struct sniff_buffer {
 static int
 ne_buffer_read(void * buffer, size_t length, void * userdata)
 {
-  struct sniff_buffer * sb = userdata;
+  struct io_buffer * iob = userdata;
 
   int rv = 1;
-  size_t available = sb->length - sb->offset;
+  size_t available = iob->length - iob->offset;
 
   if (available < length)
     return 0;
 
-  memcpy(buffer, sb->buffer + sb->offset, length);
-  sb->offset += length;
+  memcpy(buffer, iob->buffer + iob->offset, length);
+  iob->offset += length;
 
   return rv;
 }
@@ -1890,8 +1890,8 @@ ne_buffer_read(void * buffer, size_t length, void * userdata)
 static int
 ne_buffer_seek(int64_t offset, int whence, void * userdata)
 {
-  struct sniff_buffer * sb = userdata;
-  int64_t o = sb->offset;
+  struct io_buffer * iob = userdata;
+  int64_t o = iob->offset;
 
   switch(whence) {
   case NESTEGG_SEEK_SET:
@@ -1901,22 +1901,22 @@ ne_buffer_seek(int64_t offset, int whence, void * userdata)
     o += offset;
     break;
   case NESTEGG_SEEK_END:
-    o = sb->length + offset;
+    o = iob->length + offset;
     break;
   }
 
-  if (o < 0 || o > (int64_t) sb->length)
+  if (o < 0 || o > (int64_t) iob->length)
     return -1;
 
-  sb->offset = o;
+  iob->offset = o;
   return 0;
 }
 
 static int64_t
 ne_buffer_tell(void * userdata)
 {
-  struct sniff_buffer * sb = userdata;
-  return sb->offset;
+  struct io_buffer * iob = userdata;
+  return iob->offset;
 }
 
 static int
@@ -3026,7 +3026,7 @@ int
 nestegg_sniff(unsigned char const * buffer, size_t length)
 {
   nestegg_io io;
-  struct sniff_buffer userdata;
+  struct io_buffer userdata;
 
   userdata.buffer = buffer;
   userdata.length = length;
