@@ -11,7 +11,7 @@
 # define SHA_BIG_ENDIAN
 #elif defined __LITTLE_ENDIAN__
 /* override */
-#elif defined __BYTE_ORDER
+#elif defined __BYTE_ORDER__
 # if __BYTE_ORDER__ ==  __ORDER_BIG_ENDIAN__
 # define SHA_BIG_ENDIAN
 # endif
