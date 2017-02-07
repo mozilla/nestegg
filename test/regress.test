@@ -4,7 +4,7 @@ set -e
 function do_test {
   OUT=`mktemp`
   test/regress "${srcdir}/test/media/$1" $2 > $OUT
-  cmp "${srcdir}/test/media/$1.ok" $OUT
+  diff --strip-trailing-cr "${srcdir}/test/media/$1.ok" $OUT
   rm $OUT
 }
 
