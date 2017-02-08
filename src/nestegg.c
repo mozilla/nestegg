@@ -2373,7 +2373,8 @@ nestegg_track_codec_data(nestegg * ctx, unsigned int track, unsigned int item,
 
   if (nestegg_track_codec_id(ctx, track) == NESTEGG_CODEC_VORBIS) {
     uint64_t count;
-    uint64_t sizes[3], total;
+    uint64_t sizes[3];
+    size_t total;
     unsigned char * p;
     unsigned int i;
     int r;
