@@ -1365,6 +1365,52 @@ ne_find_track_entry(nestegg * ctx, unsigned int track)
   return NULL;
 }
 
+static struct frame *
+ne_alloc_frame(void)
+{
+  struct frame * f = ne_alloc(sizeof(*f));
+
+  if (!f)
+    return NULL;
+
+  f->data = NULL;
+  f->length = 0;
+  f->frame_encryption = NULL;
+  f->next = NULL;
+
+  return f;
+}
+
+static struct frame_encryption *
+ne_alloc_frame_encryption(void)
+{
+  struct frame_encryption * f = ne_alloc(sizeof(*f));
+
+  if (!f)
+    return NULL;
+
+  f->iv = NULL;
+  f->length = 0;
+  f->signal_byte = 0;
+  f->num_partitions = 0;
+  f->partition_offsets = NULL;
+
+  return f;
+}
+
+static void
+ne_free_frame(struct frame * f)
+{
+  if (f->frame_encryption) {
+    free(f->frame_encryption->iv);
+    free(f->frame_encryption->partition_offsets);
+  }
+
+  free(f->frame_encryption);
+  free(f->data);
+  free(f);
+}
+
 static int
 ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_packet ** data)
 {
@@ -1522,7 +1568,7 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
       nestegg_free_packet(pkt);
       return -1;
     }
-    f = ne_alloc(sizeof(*f));
+    f = ne_alloc_frame();
     if (!f) {
       nestegg_free_packet(pkt);
       return -1;
@@ -1531,13 +1577,13 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
     if (encoding_type == NESTEGG_ENCODING_ENCRYPTION) {
       r = ne_io_read(ctx->io, &signal_byte, SIGNAL_BYTE_SIZE);
       if (r != 1) {
-        free(f);
+        ne_free_frame(f);
         nestegg_free_packet(pkt);
         return r;
       }
-      f->frame_encryption = ne_alloc(sizeof(*f->frame_encryption));
+      f->frame_encryption = ne_alloc_frame_encryption();
       if (!f->frame_encryption) {
-        free(f);
+        ne_free_frame(f);
         nestegg_free_packet(pkt);
         return -1;
       }
@@ -1545,16 +1591,13 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
       if ((signal_byte & ENCRYPTED_BIT_MASK) == PACKET_ENCRYPTED) {
         f->frame_encryption->iv = ne_alloc(IV_SIZE);
         if (!f->frame_encryption->iv) {
-          free(f->frame_encryption);
-          free(f);
+          ne_free_frame(f);
           nestegg_free_packet(pkt);
           return -1;
         }
         r = ne_io_read(ctx->io, f->frame_encryption->iv, IV_SIZE);
         if (r != 1) {
-          free(f->frame_encryption->iv);
-          free(f->frame_encryption);
-          free(f);
+          ne_free_frame(f);
           nestegg_free_packet(pkt);
           return r;
         }
@@ -1564,9 +1607,7 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
         if ((signal_byte & PARTITIONED_BIT_MASK) == PACKET_PARTITIONED) {
           r = ne_io_read(ctx->io, &f->frame_encryption->num_partitions, NUM_PACKETS_SIZE);
           if (r != 1) {
-            free(f->frame_encryption->iv);
-            free(f->frame_encryption);
-            free(f);
+            ne_free_frame(f);
             nestegg_free_packet(pkt);
             return r;
           }
@@ -1580,50 +1621,35 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
             if (r != 1) {
               break;
             }
-            
+
             f->frame_encryption->partition_offsets[j] = (uint32_t) value;
           }
 
           /* If any of the partition offsets did not return 1, then fail. */
           if (j != f->frame_encryption->num_partitions) {
-            free(f->frame_encryption->iv);
-            free(f->frame_encryption->partition_offsets);
-            free(f->frame_encryption);
-            free(f);
+            ne_free_frame(f);
             nestegg_free_packet(pkt);
             return r;
           }
         }
       } else {
-        f->frame_encryption->iv = NULL;
-        f->frame_encryption->length = 0;
-        f->frame_encryption->partition_offsets = NULL;
-        f->frame_encryption->num_partitions = 0;
         encryption_size = SIGNAL_BYTE_SIZE;
       }
     } else {
-      f->frame_encryption = NULL;
       encryption_size = 0;
     }
     data_size = frame_sizes[i] - encryption_size;
     /* Encryption parsed */
     f->data = ne_alloc(data_size);
     if (!f->data) {
-      if (f->frame_encryption)
-        free(f->frame_encryption->iv);
-      free(f->frame_encryption);
-      free(f);
+      ne_free_frame(f);
       nestegg_free_packet(pkt);
       return -1;
     }
     f->length = data_size;
     r = ne_io_read(ctx->io, f->data, data_size);
     if (r != 1) {
-      if (f->frame_encryption)
-        free(f->frame_encryption->iv);
-      free(f->frame_encryption);
-      free(f->data);
-      free(f);
+      ne_free_frame(f);
       nestegg_free_packet(pkt);
       return r;
     }
@@ -2903,13 +2929,8 @@ nestegg_free_packet(nestegg_packet * pkt)
   while (pkt->frame) {
     frame = pkt->frame;
     pkt->frame = frame->next;
-    if (frame->frame_encryption) {
-      free(frame->frame_encryption->iv);
-      free(frame->frame_encryption->partition_offsets);
-    }
-    free(frame->frame_encryption);
-    free(frame->data);
-    free(frame);
+
+    ne_free_frame(frame);
   }
 
   while (pkt->block_additional) {
