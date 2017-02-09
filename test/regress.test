@@ -8,17 +8,19 @@ function do_test {
   rm $OUT
 }
 
+# Test parsing.
+# New additions to media/ should be included here and in the -r section.
 do_test seek.webm
 do_test bug603918.webm
 do_test detodos.webm
 do_test split.webm
 do_test demo_short.webm
 do_test seek_sub.webm
-do_test bug1200148.webm -l
 do_test dancer1.webm
 do_test dancer1rb.webm
 do_test seek_encrypted.webm
 
+# Test resumable parsing by forcing fake EOFs every byte.
 do_test seek.webm -r
 do_test bug603918.webm -r
 do_test detodos.webm -r
@@ -28,3 +30,7 @@ do_test seek_sub.webm -r
 do_test dancer1.webm -r
 do_test dancer1rb.webm -r
 do_test seek_encrypted.webm -r
+
+# Pass file size to nestegg_init as max_offset.
+# This is a hack to test with a specific truncated file.
+do_test bug1200148.webm -l
