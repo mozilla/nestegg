@@ -229,12 +229,12 @@ test(char const * path, int limit, int resume)
 
     if (pkt_encryption == NESTEGG_PACKET_HAS_SIGNAL_BYTE_PARTITIONED) {
       nestegg_packet_offsets(pkt, &pkt_partition_offsets, &pkt_num_offsets);
-      
+
       for (i = 0; i < pkt_num_offsets; ++i) {
-          printf("%u ", pkt_partition_offsets[i]);
+          printf(" %u", pkt_partition_offsets[i]);
       }
-      
-      printf("%u", (unsigned int) pkt_num_offsets);
+
+      printf(" %u", (unsigned int) pkt_num_offsets);
     }
 
     for (i = 0; i < pkt_cnt; ++i) {
