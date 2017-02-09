@@ -19,6 +19,7 @@ do_test seek_sub.webm
 do_test dancer1.webm
 do_test dancer1rb.webm
 do_test seek_encrypted.webm
+do_test subsample_encrypted.webm
 
 # Test resumable parsing by forcing fake EOFs every byte.
 do_test seek.webm -r
@@ -30,6 +31,7 @@ do_test seek_sub.webm -r
 do_test dancer1.webm -r
 do_test dancer1rb.webm -r
 do_test seek_encrypted.webm -r
+do_test subsample_encrypted.webm -r
 
 # Pass file size to nestegg_init as max_offset.
 # This is a hack to test with a specific truncated file.

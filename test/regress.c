@@ -85,6 +85,9 @@ test(char const * path, int limit, int resume)
   unsigned char const * track_content_enc_key_id, * pkt_encryption_iv;
   unsigned int i, j, tracks = 0, pkt_cnt, pkt_track;
   unsigned int data_items = 0;
+  uint8_t pkt_num_offsets;
+  uint32_t const * pkt_partition_offsets;
+
   nestegg_io io = {
     stdio_read,
     stdio_seek,
@@ -214,13 +217,24 @@ test(char const * path, int limit, int resume)
       print_hash(sha1_result(&s));
       printf(" %u", (unsigned int) length);
     }
-    if (pkt_encryption == NESTEGG_PACKET_HAS_SIGNAL_BYTE_ENCRYPTED) {
+    if (pkt_encryption == NESTEGG_PACKET_HAS_SIGNAL_BYTE_ENCRYPTED ||
+        pkt_encryption == NESTEGG_PACKET_HAS_SIGNAL_BYTE_PARTITIONED) {
       nestegg_packet_iv(pkt, &pkt_encryption_iv, &length);
       sha1_init(&s);
       sha1_write(&s, (char const *) pkt_encryption_iv, length);
       printf(" ");
       print_hash(sha1_result(&s));
       printf(" %u", (unsigned int) length);
+    }
+
+    if (pkt_encryption == NESTEGG_PACKET_HAS_SIGNAL_BYTE_PARTITIONED) {
+      nestegg_packet_offsets(pkt, &pkt_partition_offsets, &pkt_num_offsets);
+      
+      for (i = 0; i < pkt_num_offsets; ++i) {
+          printf("%u ", pkt_partition_offsets[i]);
+      }
+      
+      printf("%u", (unsigned int) pkt_num_offsets);
     }
 
     for (i = 0; i < pkt_cnt; ++i) {
