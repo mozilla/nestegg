@@ -27,7 +27,7 @@ extern "C" {
 
     @code
     nestegg * demux_ctx;
-    nestegg_init(&demux_ctx, io, NULL);
+    nestegg_init(&demux_ctx, io, NULL, -1);
 
     nestegg_packet * pkt;
     while ((r = nestegg_read_packet(demux_ctx, &pkt)) > 0) {
