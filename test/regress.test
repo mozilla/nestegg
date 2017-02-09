@@ -18,6 +18,7 @@ do_test bug1200148.webm -l
 do_test dancer1.webm
 do_test dancer1rb.webm
 do_test seek_encrypted.webm
+do_test subsample_encrypted.webm
 
 do_test seek.webm -r
 do_test bug603918.webm -r
@@ -28,3 +29,4 @@ do_test seek_sub.webm -r
 do_test dancer1.webm -r
 do_test dancer1rb.webm -r
 do_test seek_encrypted.webm -r
+do_test subsample_encrypted.webm -r
