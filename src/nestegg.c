@@ -1046,7 +1046,7 @@ static int
 ne_read_simple(nestegg * ctx, struct ebml_element_desc * desc, size_t length)
 {
   struct ebml_type * storage;
-  int r;
+  int r = -1;
 
   storage = (struct ebml_type *) (ctx->ancestor->data + desc->offset);
 
