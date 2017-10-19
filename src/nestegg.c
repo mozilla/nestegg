@@ -1552,7 +1552,7 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
   abs_timecode = timecode + cluster_tc;
   if (abs_timecode < 0) {
       /* Ignore the spec and negative timestamps */
-      ctx->log(ctx, NESTEGG_LOG_WARNING, "ignoring negative timecode: %s", abs_timecode);
+      ctx->log(ctx, NESTEGG_LOG_WARNING, "ignoring negative timecode: %lld", abs_timecode);
       abs_timecode = 0;
   }
 
