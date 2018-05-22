@@ -1642,6 +1642,11 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
     } else {
       encryption_size = 0;
     }
+    if (encryption_size > frame_sizes[i]) {
+      ne_free_frame(f);
+      nestegg_free_packet(pkt);
+      return -1;
+    }
     data_size = frame_sizes[i] - encryption_size;
     /* Encryption parsed */
     f->data = ne_alloc(data_size);
