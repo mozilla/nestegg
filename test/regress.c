@@ -80,13 +80,13 @@ test(char const * path, int limit, int resume, int fuzz)
   FILE * fp;
   int64_t read_limit = -1;
   int64_t true_eos = -1;
-  int r, type, id, track_encoding, pkt_keyframe, pkt_encryption;
+  int r, type, id, track_encoding, pkt_keyframe, pkt_encryption, cues;
   nestegg * ctx;
   nestegg_audio_params aparams;
   nestegg_packet * pkt;
   nestegg_video_params vparams;
   size_t length;
-  uint64_t duration = ~0, pkt_tstamp, pkt_duration;
+  uint64_t duration = ~0, pkt_tstamp, pkt_duration, tstamp_scale, default_duration;
   int64_t pkt_discard_padding, pkt_reference_block;
   unsigned char * codec_data, * ptr, * pkt_additional;
   unsigned char const * track_content_enc_key_id, * pkt_encryption_iv;
@@ -127,8 +127,11 @@ test(char const * path, int limit, int resume, int fuzz)
 
   nestegg_track_count(ctx, &tracks);
   nestegg_duration(ctx, &duration);
+  nestegg_tstamp_scale(ctx, &tstamp_scale);
+  cues = nestegg_has_cues(ctx);
   if (!fuzz) {
-    printf("%u %llu\n", tracks, (unsigned long long) duration);
+    printf("%u %llu %llu %d\n", tracks, (unsigned long long) duration,
+           (unsigned long long) tstamp_scale, cues);
   }
 
   for (i = 0; i < tracks; ++i) {
@@ -136,8 +139,11 @@ test(char const * path, int limit, int resume, int fuzz)
     id = nestegg_track_codec_id(ctx, i);
     nestegg_track_codec_data_count(ctx, i, &data_items);
     track_encoding = nestegg_track_encoding(ctx, i);
+    r = nestegg_track_default_duration(ctx, i, &default_duration);
     if (!fuzz) {
       printf("%d %d %u %u", type, id, data_items, track_encoding);
+      if (r == 0)
+        printf(" %llu", default_duration);
     }
     if (track_encoding == NESTEGG_ENCODING_ENCRYPTION) {
       nestegg_track_content_enc_key_id(ctx, i, &track_content_enc_key_id, &length);
