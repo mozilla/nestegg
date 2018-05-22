@@ -75,7 +75,7 @@ stdio_tell(void * fp)
 }
 
 int
-test(char const * path, int limit, int resume)
+test(char const * path, int limit, int resume, int fuzz)
 {
   FILE * fp;
   int64_t read_limit = -1;
@@ -127,47 +127,66 @@ test(char const * path, int limit, int resume)
 
   nestegg_track_count(ctx, &tracks);
   nestegg_duration(ctx, &duration);
-  printf("%u %llu\n", tracks, (unsigned long long) duration);
+  if (!fuzz) {
+    printf("%u %llu\n", tracks, (unsigned long long) duration);
+  }
 
   for (i = 0; i < tracks; ++i) {
     type = nestegg_track_type(ctx, i);
     id = nestegg_track_codec_id(ctx, i);
     nestegg_track_codec_data_count(ctx, i, &data_items);
     track_encoding = nestegg_track_encoding(ctx, i);
-    printf("%d %d %u %u", type, id, data_items, track_encoding);
+    if (!fuzz) {
+      printf("%d %d %u %u", type, id, data_items, track_encoding);
+    }
     if (track_encoding == NESTEGG_ENCODING_ENCRYPTION) {
       nestegg_track_content_enc_key_id(ctx, i, &track_content_enc_key_id, &length);
-      printf(" ");
-      print_hash(track_content_enc_key_id, length);
+      if (!fuzz) {
+        printf(" ");
+        print_hash(track_content_enc_key_id, length);
+      }
     }
-    printf("\n");
+    if (!fuzz) {
+      printf("\n");
+    }
     for (j = 0; j < data_items; ++j) {
       nestegg_track_codec_data(ctx, i, j, &codec_data, &length);
-      print_hash(codec_data, length);
-      printf("\n");
+      if (!fuzz) {
+        print_hash(codec_data, length);
+        printf("\n");
+      }
     }
     switch (type) {
     case NESTEGG_TRACK_VIDEO:
       nestegg_track_video_params(ctx, i, &vparams);
-      printf("%u %u %u %u %u %u %u %u %u %u\n",
-             vparams.stereo_mode, vparams.width, vparams.height,
-             vparams.display_width, vparams.display_height,
-             vparams.crop_bottom, vparams.crop_top,
-             vparams.crop_left, vparams.crop_right,
-             vparams.alpha_mode);
+      if (!fuzz) {
+        printf("%u %u %u %u %u %u %u %u %u %u\n",
+               vparams.stereo_mode, vparams.width, vparams.height,
+               vparams.display_width, vparams.display_height,
+               vparams.crop_bottom, vparams.crop_top,
+               vparams.crop_left, vparams.crop_right,
+               vparams.alpha_mode);
+      }
       break;
     case NESTEGG_TRACK_AUDIO:
       nestegg_track_audio_params(ctx, i, &aparams);
-      printf("%f %u %u %llu %llu\n",
-             aparams.rate, aparams.channels, aparams.depth,
-             (unsigned long long) aparams.codec_delay,
-             (unsigned long long) aparams.seek_preroll);
+      if (!fuzz) {
+        printf("%f %u %u %llu %llu\n",
+               aparams.rate, aparams.channels, aparams.depth,
+               (unsigned long long) aparams.codec_delay,
+               (unsigned long long) aparams.seek_preroll);
+      }
       break;
     case NESTEGG_TRACK_UNKNOWN:
-      printf("unknown track\n");
+      if (!fuzz) {
+        printf("unknown track\n");
+      }
       break;
     default:
-      abort();
+      if (!fuzz) {
+        printf("unexpected track type\n");
+        abort();
+      }
     }
   }
 
@@ -203,41 +222,51 @@ test(char const * path, int limit, int resume)
     nestegg_packet_additional_data(pkt, 1, &pkt_additional, &length);
     pkt_encryption = nestegg_packet_encryption(pkt);
 
-    printf("%u %d %llu %u %d", pkt_track, pkt_keyframe, (unsigned long long) pkt_tstamp, pkt_cnt,
-            pkt_encryption);
-    if (pkt_duration != 0)
-      printf(" %llu", (unsigned long long) pkt_duration);
-    if (pkt_discard_padding != 0)
-      printf(" %lld", (long long) pkt_discard_padding);
-    if (pkt_reference_block != 0)
-      printf(" %lld", (long long) pkt_reference_block);
-    if (pkt_additional) {
-      printf(" ");
-      print_hash(pkt_additional, length);
+    if (!fuzz) {
+      printf("%u %d %llu %u %d", pkt_track, pkt_keyframe, (unsigned long long) pkt_tstamp, pkt_cnt,
+             pkt_encryption);
+      if (pkt_duration != 0)
+        printf(" %llu", (unsigned long long) pkt_duration);
+      if (pkt_discard_padding != 0)
+        printf(" %lld", (long long) pkt_discard_padding);
+      if (pkt_reference_block != 0)
+        printf(" %lld", (long long) pkt_reference_block);
+      if (pkt_additional) {
+        printf(" ");
+        print_hash(pkt_additional, length);
+      }
     }
     if (pkt_encryption == NESTEGG_PACKET_HAS_SIGNAL_BYTE_ENCRYPTED ||
         pkt_encryption == NESTEGG_PACKET_HAS_SIGNAL_BYTE_PARTITIONED) {
       nestegg_packet_iv(pkt, &pkt_encryption_iv, &length);
-      printf(" ");
-      print_hash(pkt_encryption_iv, length);
+      if (!fuzz) {
+        printf(" ");
+        print_hash(pkt_encryption_iv, length);
+      }
     }
 
     if (pkt_encryption == NESTEGG_PACKET_HAS_SIGNAL_BYTE_PARTITIONED) {
       nestegg_packet_offsets(pkt, &pkt_partition_offsets, &pkt_num_offsets);
 
-      for (i = 0; i < pkt_num_offsets; ++i) {
+      if (!fuzz) {
+        for (i = 0; i < pkt_num_offsets; ++i) {
           printf(" %u", pkt_partition_offsets[i]);
-      }
+        }
 
-      printf(" %u", (unsigned int) pkt_num_offsets);
+        printf(" %u", (unsigned int) pkt_num_offsets);
+      }
     }
 
     for (i = 0; i < pkt_cnt; ++i) {
       nestegg_packet_data(pkt, i, &ptr, &length);
-      printf(" ");
-      print_hash(ptr, length);
+      if (!fuzz) {
+        printf(" ");
+        print_hash(ptr, length);
+      }
     }
-    printf("\n");
+    if (!fuzz) {
+      printf("\n");
+    }
 
     nestegg_free_packet(pkt);
   }
@@ -250,13 +279,14 @@ test(char const * path, int limit, int resume)
 int
 main(int argc, char * argv[])
 {
-  int limit, resume;
+  int limit, resume, fuzz;
 
   if (argc != 2 && argc != 3)
     return EXIT_FAILURE;
 
   limit = argc == 3 && argv[2][0] == '-' && argv[2][1] == 'l';
   resume = argc == 3 && argv[2][0] == '-' && argv[2][1] == 'r';
+  fuzz = argc == 3 && argv[2][0] == '-' && argv[2][1] == 'z';
 
-  return test(argv[1], limit, resume);
+  return test(argv[1], limit, resume, fuzz);
 }
