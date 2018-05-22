@@ -25,10 +25,10 @@ src_libnestegg_la_SOURCES = \
 
 src_libnestegg_la_LDFLAGS = -export-symbols-regex '^nestegg_' -no-undefined
 
-check_PROGRAMS = test/test test/regress
+check_PROGRAMS = test/dump test/regress
 
-test_test_SOURCES = test/test.c
-test_test_LDADD = src/libnestegg.la
+test_dump_SOURCES = test/dump.c
+test_dump_LDADD = src/libnestegg.la
 
 test_regress_SOURCES = test/regress.c
 test_regress_LDADD = src/libnestegg.la

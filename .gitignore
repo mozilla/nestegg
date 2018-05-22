@@ -38,10 +38,10 @@ src/libnestegg.la
 stamp-h1
 test-driver
 test-suite.log
+test/dump
+test/dump.exe
 test/regress
 test/regress.exe
-test/test
-test/test.exe
 test/*.log
 test/*.trs
 include/nestegg/nestegg-stdint.h
