@@ -14,13 +14,20 @@
 #include "sha1.c"
 
 static void
-print_hash(uint8_t const * hash)
+print_hash(uint8_t const * data, size_t len)
 {
+  sha1nfo s;
+  uint8_t const * hash;
   int i;
+
+  sha1_init(&s);
+  sha1_write(&s, (char const *) data, len);
+  hash = sha1_result(&s);
 
   for (i = 0; i < 20; i++) {
     printf("%02x", hash[i]);
   }
+  printf(" %zu", len);
 }
 
 static int64_t fake_eos = -1;
@@ -94,7 +101,6 @@ test(char const * path, int limit, int resume)
     stdio_tell,
     NULL
   };
-  sha1nfo s;
 
   fp = fopen(path, "rb");
   if (!fp)
@@ -131,19 +137,14 @@ test(char const * path, int limit, int resume)
     printf("%d %d %u %u", type, id, data_items, track_encoding);
     if (track_encoding == NESTEGG_ENCODING_ENCRYPTION) {
       nestegg_track_content_enc_key_id(ctx, i, &track_content_enc_key_id, &length);
-      sha1_init(&s);
-      sha1_write(&s, (char const *) track_content_enc_key_id, length);
       printf(" ");
-      print_hash(sha1_result(&s));
-      printf(" %u", (unsigned int) length);
+      print_hash(track_content_enc_key_id, length);
     }
     printf("\n");
     for (j = 0; j < data_items; ++j) {
       nestegg_track_codec_data(ctx, i, j, &codec_data, &length);
-      sha1_init(&s);
-      sha1_write(&s, (char const *) codec_data, length);
-      print_hash(sha1_result(&s));
-      printf(" %u\n", (unsigned int) length);
+      print_hash(codec_data, length);
+      printf("\n");
     }
     switch (type) {
     case NESTEGG_TRACK_VIDEO:
@@ -211,20 +212,14 @@ test(char const * path, int limit, int resume)
     if (pkt_reference_block != 0)
       printf(" %lld", (long long) pkt_reference_block);
     if (pkt_additional) {
-      sha1_init(&s);
-      sha1_write(&s, (char const *) pkt_additional, length);
       printf(" ");
-      print_hash(sha1_result(&s));
-      printf(" %u", (unsigned int) length);
+      print_hash(pkt_additional, length);
     }
     if (pkt_encryption == NESTEGG_PACKET_HAS_SIGNAL_BYTE_ENCRYPTED ||
         pkt_encryption == NESTEGG_PACKET_HAS_SIGNAL_BYTE_PARTITIONED) {
       nestegg_packet_iv(pkt, &pkt_encryption_iv, &length);
-      sha1_init(&s);
-      sha1_write(&s, (char const *) pkt_encryption_iv, length);
       printf(" ");
-      print_hash(sha1_result(&s));
-      printf(" %u", (unsigned int) length);
+      print_hash(pkt_encryption_iv, length);
     }
 
     if (pkt_encryption == NESTEGG_PACKET_HAS_SIGNAL_BYTE_PARTITIONED) {
@@ -239,11 +234,8 @@ test(char const * path, int limit, int resume)
 
     for (i = 0; i < pkt_cnt; ++i) {
       nestegg_packet_data(pkt, i, &ptr, &length);
-      sha1_init(&s);
-      sha1_write(&s, (char const *) ptr, length);
       printf(" ");
-      print_hash(sha1_result(&s));
-      printf(" %u", (unsigned int) length);
+      print_hash(ptr, length);
     }
     printf("\n");
 
