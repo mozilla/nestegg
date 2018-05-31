@@ -2079,6 +2079,17 @@ ne_match_webm(nestegg_io io, int64_t max_offset)
   return 1;
 }
 
+static void
+ne_free_block_additions(struct block_additional * block_additional)
+{
+  while (block_additional) {
+    struct block_additional * tmp = block_additional;
+    block_additional = block_additional->next;
+    free(tmp->data);
+    free(tmp);
+  }
+}
+
 int
 nestegg_init(nestegg ** context, nestegg_io io, nestegg_log callback, int64_t max_offset)
 {
@@ -2794,7 +2805,7 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
       while (ne_io_tell(ctx->io) < block_group_end) {
         r = ne_read_element(ctx, &id, &size);
         if (r != 1) {
-          free(block_additional);
+          ne_free_block_additions(block_additional);
           if (*pkt) {
             nestegg_free_packet(*pkt);
             *pkt = NULL;
@@ -2806,7 +2817,7 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
         case ID_BLOCK: {
           r = ne_read_block(ctx, id, size, pkt);
           if (r != 1) {
-            free(block_additional);
+            ne_free_block_additions(block_additional);
             if (*pkt) {
               nestegg_free_packet(*pkt);
               *pkt = NULL;
@@ -2820,7 +2831,7 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
         case ID_BLOCK_DURATION: {
           r = ne_read_uint(ctx->io, &block_duration, size);
           if (r != 1) {
-            free(block_additional);
+            ne_free_block_additions(block_additional);
             if (*pkt) {
               nestegg_free_packet(*pkt);
               *pkt = NULL;
@@ -2829,7 +2840,7 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
           }
           tc_scale = ne_get_timecode_scale(ctx);
           if (tc_scale == 0) {
-            free(block_additional);
+            ne_free_block_additions(block_additional);
             if (*pkt) {
               nestegg_free_packet(*pkt);
               *pkt = NULL;
@@ -2843,7 +2854,7 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
         case ID_DISCARD_PADDING: {
           r = ne_read_int(ctx->io, &discard_padding, size);
           if (r != 1) {
-            free(block_additional);
+            ne_free_block_additions(block_additional);
             if (*pkt) {
               nestegg_free_packet(*pkt);
               *pkt = NULL;
@@ -2856,7 +2867,7 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
         case ID_BLOCK_ADDITIONS: {
           /* There should only be one BlockAdditions; treat multiple as an error. */
           if (block_additional) {
-            free(block_additional);
+            ne_free_block_additions(block_additional);
             if (*pkt) {
               nestegg_free_packet(*pkt);
               *pkt = NULL;
@@ -2865,7 +2876,7 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
           }
           r = ne_read_block_additions(ctx, size, &block_additional);
           if (r != 1) {
-            free(block_additional);
+            ne_free_block_additions(block_additional);
             if (*pkt) {
               nestegg_free_packet(*pkt);
               *pkt = NULL;
@@ -2877,7 +2888,7 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
         case ID_REFERENCE_BLOCK: {
           r = ne_read_int(ctx->io, &reference_block, size);
           if (r != 1) {
-            free(block_additional);
+            ne_free_block_additions(block_additional);
             if (*pkt) {
               nestegg_free_packet(*pkt);
               *pkt = NULL;
@@ -2894,7 +2905,7 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
                      "read_packet: unknown element %llx in BlockGroup", id);
           r = ne_io_read_skip(ctx->io, size);
           if (r != 1) {
-            free(block_additional);
+            ne_free_block_additions(block_additional);
             if (*pkt) {
               nestegg_free_packet(*pkt);
               *pkt = NULL;
@@ -2918,7 +2929,7 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
              predictive frames and no keyframes */
           (*pkt)->keyframe = NESTEGG_PACKET_HAS_KEYFRAME_FALSE;
       } else {
-        free(block_additional);
+        ne_free_block_additions(block_additional);
       }
       break;
     }
@@ -2937,7 +2948,6 @@ void
 nestegg_free_packet(nestegg_packet * pkt)
 {
   struct frame * frame;
-  struct block_additional * block_additional;
 
   while (pkt->frame) {
     frame = pkt->frame;
@@ -2946,12 +2956,7 @@ nestegg_free_packet(nestegg_packet * pkt)
     ne_free_frame(frame);
   }
 
-  while (pkt->block_additional) {
-    block_additional = pkt->block_additional;
-    pkt->block_additional = block_additional->next;
-    free(block_additional->data);
-    free(block_additional);
-  }
+  ne_free_block_additions(pkt->block_additional);
 
   free(pkt);
 }
