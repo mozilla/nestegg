@@ -2815,6 +2815,11 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
 
         switch (id) {
         case ID_BLOCK: {
+          if (*pkt) {
+            ctx->log(ctx, NESTEGG_LOG_DEBUG,
+                     "read_packet: multiple Blocks in BlockGroup, dropping previously read Block");
+            nestegg_free_packet(*pkt);
+          }
           r = ne_read_block(ctx, id, size, pkt);
           if (r != 1) {
             ne_free_block_additions(block_additional);
