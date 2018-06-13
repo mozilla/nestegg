@@ -34,17 +34,18 @@ static int
 ne_buffer_read(void * buffer, size_t length, void * userdata)
 {
   struct io_buffer * iob = reinterpret_cast<struct io_buffer *>(userdata);
-
-  int rv = 1;
   size_t available = iob->length - iob->offset;
 
-  if (available < length)
+  if (available == 0)
     return 0;
+
+  if (available < length)
+    return -1;
 
   memcpy(buffer, iob->buffer + iob->offset, length);
   iob->offset += length;
 
-  return rv;
+  return 1;
 }
 
 static int
