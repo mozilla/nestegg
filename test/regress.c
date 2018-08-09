@@ -277,6 +277,20 @@ test(char const * path, int limit, int resume, int fuzz)
     nestegg_free_packet(pkt);
   }
 
+  /* We don't know how many Clusters there are, so just check a handful. */
+  for (i = 0; i < 10; ++i) {
+    int64_t start = -1, end = -1;
+    uint64_t tstamp = ~0;
+    nestegg_get_cue_point(ctx, i, read_limit, &start, &end, &tstamp);
+    if (start == -1 && i == 0)
+      break;
+    if (!fuzz) {
+      printf("%d %lld %lld %llu\n", i, start, end, tstamp);
+    }
+    if (end == -1)
+      break;
+  }
+
   nestegg_destroy(ctx);
   fclose(fp);
   return EXIT_SUCCESS;
