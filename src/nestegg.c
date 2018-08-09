@@ -1052,9 +1052,9 @@ ne_read_simple(nestegg * ctx, struct ebml_element_desc * desc, size_t length)
   storage = (struct ebml_type *) (ctx->ancestor->data + desc->offset);
 
   if (storage->read) {
-    ctx->log(ctx, NESTEGG_LOG_DEBUG, "element %llx (%s) already read, skipping",
-             desc->id, desc->name);
-    return 0;
+    ctx->log(ctx, NESTEGG_LOG_DEBUG, "element %llx (%s) already read, skipping %u",
+             desc->id, desc->name, length);
+    return ne_io_read_skip(ctx->io, length);
   }
 
   storage->type = desc->type;
