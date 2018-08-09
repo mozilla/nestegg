@@ -20,6 +20,7 @@ do_test dancer1.webm
 do_test dancer1rb.webm
 do_test seek_encrypted.webm
 do_test subsample_encrypted.webm
+do_test bug1480003.webm
 
 # Test resumable parsing by forcing fake EOFs every byte.
 do_test seek.webm -r
