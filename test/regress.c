@@ -185,7 +185,7 @@ test(char const * path, int limit, int resume, int fuzz)
       break;
     case NESTEGG_TRACK_UNKNOWN:
       if (!fuzz) {
-        printf("unknown track\n");
+        printf("unknown track type\n");
       }
       break;
     default:
