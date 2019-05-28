@@ -166,12 +166,42 @@ test(char const * path, int limit, int resume, int fuzz)
     case NESTEGG_TRACK_VIDEO:
       nestegg_track_video_params(ctx, i, &vparams);
       if (!fuzz) {
-        printf("%u %u %u %u %u %u %u %u %u %u\n",
+        printf("%u %u %u %u %u %u %u %u %u %u",
                vparams.stereo_mode, vparams.width, vparams.height,
                vparams.display_width, vparams.display_height,
                vparams.crop_bottom, vparams.crop_top,
                vparams.crop_left, vparams.crop_right,
                vparams.alpha_mode);
+        /* Avoid printing default values for various colourspace fields. */
+        if (vparams.matrix_coefficients != 2 || vparams.range != 0 ||
+            vparams.transfer_characteristics != 2 || vparams.primaries != 2) {
+          printf(" %u %u %u %u",
+                 vparams.matrix_coefficients, vparams.range,
+                 vparams.transfer_characteristics, vparams.primaries);
+        }
+        if (!isnan(vparams.primary_r_chromacity_x) ||
+            !isnan(vparams.primary_r_chromacity_y) ||
+            !isnan(vparams.primary_g_chromacity_x) ||
+            !isnan(vparams.primary_g_chromacity_y) ||
+            !isnan(vparams.primary_b_chromacity_x) ||
+            !isnan(vparams.primary_b_chromacity_y) ||
+            !isnan(vparams.white_point_chromaticity_x) ||
+            !isnan(vparams.white_point_chromaticity_y) ||
+            !isnan(vparams.luminance_max) ||
+            !isnan(vparams.luminance_min)) {
+          printf(" %f %f %f %f %f %f %f %f %f %f",
+                 vparams.primary_r_chromacity_x,
+                 vparams.primary_r_chromacity_y,
+                 vparams.primary_g_chromacity_x,
+                 vparams.primary_g_chromacity_y,
+                 vparams.primary_b_chromacity_x,
+                 vparams.primary_b_chromacity_y,
+                 vparams.white_point_chromaticity_x,
+                 vparams.white_point_chromaticity_y,
+                 vparams.luminance_max,
+                 vparams.luminance_min);
+        }
+        printf("\n");
       }
       break;
     case NESTEGG_TRACK_AUDIO:
