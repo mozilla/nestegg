@@ -2429,10 +2429,10 @@ nestegg_track_type(nestegg * ctx, unsigned int track)
   if (ne_get_uint(entry->type, &type) != 0)
     return -1;
 
-  if (type & TRACK_TYPE_VIDEO)
+  if (type == TRACK_TYPE_VIDEO)
     return NESTEGG_TRACK_VIDEO;
 
-  if (type & TRACK_TYPE_AUDIO)
+  if (type == TRACK_TYPE_AUDIO)
     return NESTEGG_TRACK_AUDIO;
 
   return NESTEGG_TRACK_UNKNOWN;
