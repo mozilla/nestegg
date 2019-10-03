@@ -2250,7 +2250,8 @@ void
 nestegg_destroy(nestegg * ctx)
 {
   assert(ctx->ancestor == NULL);
-  ne_pool_destroy(ctx->alloc_pool);
+  if (ctx->alloc_pool)
+    ne_pool_destroy(ctx->alloc_pool);
   free(ctx->io);
   free(ctx);
 }
