@@ -2134,7 +2134,10 @@ ne_match_webm(nestegg_io io, int64_t max_offset)
     return 0;
   }
 
-  ne_ctx_push(ctx, ne_top_level_elements, ctx);
+  if (ne_ctx_push(ctx, ne_top_level_elements, ctx) < 0) {
+    nestegg_destroy(ctx);
+    return -1;
+  }
 
   /* we don't check the return value of ne_parse, that might fail because
      max_offset is not on a valid element end point. We only want to check
@@ -2190,7 +2193,10 @@ nestegg_init(nestegg ** context, nestegg_io io, nestegg_log callback, int64_t ma
 
   ctx->log(ctx, NESTEGG_LOG_DEBUG, "ctx %p", ctx);
 
-  ne_ctx_push(ctx, ne_top_level_elements, ctx);
+  if (ne_ctx_push(ctx, ne_top_level_elements, ctx) < 0) {
+    nestegg_destroy(ctx);
+    return -1;
+  }
 
   r = ne_parse(ctx, NULL, max_offset);
   while (ctx->ancestor)
