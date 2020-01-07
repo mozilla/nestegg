@@ -72,6 +72,7 @@ extern "C" {
 #define NESTEGG_CODEC_VP9     2       /**< Track uses Google On2 VP9 codec. */
 #define NESTEGG_CODEC_OPUS    3       /**< Track uses Xiph Opus codec. */
 #define NESTEGG_CODEC_AV1     4       /**< Track uses AOMedia AV1 codec. */
+#define NESTEGG_CODEC_FLAC    5       /**< Track uses Xiph FLAC codec. */
 #define NESTEGG_CODEC_UNKNOWN INT_MAX /**< Track uses unknown codec. */
 
 #define NESTEGG_VIDEO_MONO              0 /**< Track is mono video. */
@@ -276,6 +277,7 @@ int nestegg_track_type(nestegg * context, unsigned int track);
     @retval #NESTEGG_CODEC_AV1     Track codec is AV1.
     @retval #NESTEGG_CODEC_VORBIS  Track codec is Vorbis.
     @retval #NESTEGG_CODEC_OPUS    Track codec is Opus.
+    @retval #NESTEGG_CODEC_FLAC    Track codec is FLAC.
     @retval #NESTEGG_CODEC_UNKNOWN Track codec is unknown.
     @retval -1 Error. */
 int nestegg_track_codec_id(nestegg * context, unsigned int track);

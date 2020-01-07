@@ -177,6 +177,7 @@ enum ebml_type_enum {
 #define TRACK_ID_AV1                "V_AV1"
 #define TRACK_ID_VORBIS             "A_VORBIS"
 #define TRACK_ID_OPUS               "A_OPUS"
+#define TRACK_ID_FLAC               "A_FLAC"
 
 /* Track Encryption */
 #define CONTENT_ENC_ALGO_AES        5
@@ -2481,6 +2482,9 @@ nestegg_track_codec_id(nestegg * ctx, unsigned int track)
 
   if (strcmp(codec_id, TRACK_ID_OPUS) == 0)
     return NESTEGG_CODEC_OPUS;
+
+  if (strcmp(codec_id, TRACK_ID_FLAC) == 0)
+    return NESTEGG_CODEC_FLAC;
 
   return NESTEGG_CODEC_UNKNOWN;
 }
