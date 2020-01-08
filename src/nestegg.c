@@ -2506,12 +2506,12 @@ nestegg_track_codec_data_count(nestegg * ctx, unsigned int track,
 
   codec_id = nestegg_track_codec_id(ctx, track);
 
-  if (codec_id == NESTEGG_CODEC_OPUS) {
+  if (codec_id == NESTEGG_CODEC_OPUS || codec_id == NESTEGG_CODEC_FLAC) {
     *count = 1;
     return 0;
   }
 
-  if (codec_id != NESTEGG_CODEC_VORBIS && codec_id != NESTEGG_CODEC_FLAC)
+  if (codec_id != NESTEGG_CODEC_VORBIS)
     return -1;
 
   if (ne_get_binary(entry->codec_private, &codec_private) != 0)
@@ -2553,7 +2553,7 @@ nestegg_track_codec_data(nestegg * ctx, unsigned int track, unsigned int item,
   if (ne_get_binary(entry->codec_private, &codec_private) != 0)
     return -1;
 
-  if (nestegg_track_codec_id(ctx, track) == NESTEGG_CODEC_VORBIS) {
+  if (codec_id == NESTEGG_CODEC_VORBIS) {
     uint64_t count;
     uint64_t sizes[3];
     size_t total;
