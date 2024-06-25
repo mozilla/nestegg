@@ -3044,7 +3044,7 @@ nestegg_peek_packet(nestegg * ctx, uint64_t * track, uint64_t * timecode)
     }
   }
 
-  // Restore the parser state to the point before the peek.
+  /* Restore the parser state to the point before the peek. */
   r = ne_ctx_restore(ctx, &ctx->saved);
   assert(r == 0);
 
