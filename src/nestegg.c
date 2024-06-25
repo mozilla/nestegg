@@ -1750,15 +1750,13 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
 }
 
 static int
-ne_read_block_timecode(nestegg * ctx, uint64_t block_id, uint64_t block_size, uint64_t * track_no, uint64_t * timecode)
+ne_read_block_timecode(nestegg * ctx, uint64_t block_id, uint64_t block_size, uint64_t * track_no, uint64_t * track_timecode)
 {
   int r;
   int64_t timecode, abs_timecode;
   double track_scale;
   uint64_t track_number, length, cluster_tc, tc_scale;
   unsigned int track;
-  uint8_t signal_byte, keyframe = NESTEGG_PACKET_HAS_KEYFRAME_UNKNOWN, j = 0;
-  size_t consumed = 0, data_size, encryption_size;
 
   if (block_size > LIMIT_BLOCK)
     return -1;
@@ -1798,10 +1796,10 @@ ne_read_block_timecode(nestegg * ctx, uint64_t block_id, uint64_t block_size, ui
   }
 
   *track_no = track;
-  *timecode = abs_timecode * tc_scale * track_scale;
+  *track_timecode = abs_timecode * tc_scale * track_scale;
 
   ctx->log(ctx, NESTEGG_LOG_DEBUG, "peek %sblock t %lld pts %f",
-           block_id == ID_BLOCK ? "" : "simple", *track_no, *timecode / 1e9);
+           block_id == ID_BLOCK ? "" : "simple", *track_no, *track_timecode / 1e9);
 
   return 1;
 }
@@ -3000,7 +2998,6 @@ nestegg_peek_packet(nestegg * ctx, uint64_t * track, uint64_t * timecode)
       break;
     case ID_BLOCK_GROUP: {
       int64_t block_group_end;
-      uint64_t tc_scale;
 
       block_group_end = ne_io_tell(ctx->io) + size;
 
