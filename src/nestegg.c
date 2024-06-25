@@ -1750,6 +1750,63 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
 }
 
 static int
+ne_read_block_timecode(nestegg * ctx, uint64_t block_id, uint64_t block_size, uint64_t * track_no, uint64_t * timecode)
+{
+  int r;
+  int64_t timecode, abs_timecode;
+  double track_scale;
+  uint64_t track_number, length, cluster_tc, tc_scale;
+  unsigned int track;
+  uint8_t signal_byte, keyframe = NESTEGG_PACKET_HAS_KEYFRAME_UNKNOWN, j = 0;
+  size_t consumed = 0, data_size, encryption_size;
+
+  if (block_size > LIMIT_BLOCK)
+    return -1;
+
+  r = ne_read_vint(ctx->io, &track_number, &length);
+  if (r != 1)
+    return r;
+
+  if (track_number == 0)
+    return -1;
+
+  r = ne_read_int(ctx->io, &timecode, 2);
+  if (r != 1)
+    return r;
+
+  if (ne_map_track_number_to_index(ctx, track_number, &track) != 0)
+    return -1;
+
+  if (!ne_find_track_entry(ctx, track)) 
+    return -1;
+
+  track_scale = 1.0;
+
+  tc_scale = ne_get_timecode_scale(ctx);
+  if (tc_scale == 0)
+    return -1;
+
+  if (!ctx->read_cluster_timecode)
+    return -1;
+  cluster_tc = ctx->cluster_timecode;
+
+  abs_timecode = timecode + cluster_tc;
+  if (abs_timecode < 0) {
+      /* Ignore the spec and negative timestamps */
+      ctx->log(ctx, NESTEGG_LOG_WARNING, "ignoring negative timecode: %lld", abs_timecode);
+      abs_timecode = 0;
+  }
+
+  *track_no = track;
+  *timecode = abs_timecode * tc_scale * track_scale;
+
+  ctx->log(ctx, NESTEGG_LOG_DEBUG, "peek %sblock t %lld pts %f",
+           block_id == ID_BLOCK ? "" : "simple", *track_no, *timecode / 1e9);
+
+  return 1;
+}
+
+static int
 ne_read_block_additions(nestegg * ctx, uint64_t block_size, struct block_additional ** pkt_block_additional)
 {
   int r;
@@ -2882,6 +2939,119 @@ nestegg_read_reset(nestegg * ctx)
 {
   assert(ctx->ancestor == NULL);
   return ne_ctx_restore(ctx, &ctx->saved);
+}
+
+int
+nestegg_peek_packet(nestegg * ctx, uint64_t * track, uint64_t * timecode)
+{
+  int r, read_block = 0;
+  uint64_t id, size, track_number, track_timecode;
+
+  if (!track || !timecode)
+    return -1;
+
+  assert(ctx->ancestor == NULL);
+
+  /* Prepare for read_reset to resume parsing from this point upon error. */
+  r = ne_ctx_save(ctx, &ctx->saved);
+  if (r != 0)
+    return -1;
+
+  while (!read_block) {
+    r = ne_read_element(ctx, &id, &size);
+    if (r != 1)
+      break;
+
+    switch (id) {
+    case ID_CLUSTER: {
+      r = ne_read_element(ctx, &id, &size);
+      if (r != 1)
+        break;
+
+      /* Matroska may place a CRC32 before the Timecode. Skip and continue parsing. */
+      if (id == ID_CRC32) {
+        r = ne_io_read_skip(ctx->io, size);
+        if (r != 1)
+          break;
+
+        r = ne_read_element(ctx, &id, &size);
+        if (r != 1)
+          break;
+      }
+
+      /* Timecode must be the first element in a Cluster, per WebM spec. */
+      if (id != ID_TIMECODE)
+        break;
+
+      r = ne_read_uint(ctx->io, &ctx->cluster_timecode, size);
+      if (r != 1) {
+        break;
+      }
+      ctx->read_cluster_timecode = 1;
+      break;
+    }
+    case ID_SIMPLE_BLOCK:
+      r = ne_read_block_timecode(ctx, id, size, &track_number, &track_timecode);
+      if (r != 1) {
+        break;
+      }
+
+      read_block = 1;
+      break;
+    case ID_BLOCK_GROUP: {
+      int64_t block_group_end;
+      uint64_t tc_scale;
+
+      block_group_end = ne_io_tell(ctx->io) + size;
+
+      /* Read the entire BlockGroup manually. */
+      while (ne_io_tell(ctx->io) < block_group_end) {
+        r = ne_read_element(ctx, &id, &size);
+        if (r != 1) {
+          break;
+        }
+
+        switch (id) {
+        case ID_BLOCK: {
+          r = ne_read_block_timecode(ctx, id, size, &track_number, &track_timecode);
+          if (r != 1) {
+            break;
+          }
+
+          read_block = 1;
+          break;
+        }
+        default:
+          /* We don't know what this element is, so skip over it */
+          if (id != ID_VOID && id != ID_CRC32)
+            ctx->log(ctx, NESTEGG_LOG_DEBUG,
+                     "read_packet: unknown element %llx in BlockGroup", id);
+          r = ne_io_read_skip(ctx->io, size);
+          if (r != 1) {
+            break;
+          }
+        }
+      }
+
+      if (read_block) {
+        *track = track_number;
+        *timecode = track_timecode;
+      }
+      break;
+    }
+    default:
+      ctx->log(ctx, NESTEGG_LOG_DEBUG, "read_packet: unknown element %llx", id);
+      r = ne_io_read_skip(ctx->io, size);
+      if (r != 1)
+        break;
+    }
+  }
+
+  // Restore the parser state to the point before the peek.
+  r = ne_ctx_restore(ctx, &ctx->saved);
+  assert(r == 0);
+
+  return read_block;
 }
 
 int

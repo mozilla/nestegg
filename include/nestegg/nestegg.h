@@ -371,6 +371,16 @@ int nestegg_read_reset(nestegg * context);
     @retval -1 Error. */
 int nestegg_read_packet(nestegg * context, nestegg_packet ** packet);
 
+/** Peek the next packet to parse the track and timecode.  This does not
+    advance the read cursor of the media.
+    @param context  Context returned by #nestegg_init.
+    @param track    On success, contains the track for which the timecode is valid.
+    @param timecode On success, contains the next packet's timecode.
+    @retval  1 Successful peek, track and timecode valid.
+    @retval  0 End of stream.
+    @retval -1 Error. */
+int nestegg_peek_packet(nestegg * ctx, uint64_t * track, uint64_t * timecode);
+
 /** Destroy a nestegg_packet and free associated memory.
     @param packet #nestegg_packet to be freed. @see nestegg_read_packet */
 void nestegg_free_packet(nestegg_packet * packet);
