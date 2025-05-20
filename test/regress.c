@@ -5,6 +5,7 @@
  * accompanying file LICENSE for details.
  */
 #include <assert.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
