@@ -239,6 +239,9 @@ struct ebml {
   struct ebml_type doctype_read_version;
 };
 
+#define DOCTYPE_WEBM "webm"
+#define DOCTYPE_MKV  "matroska"
+
 /* Matroksa Definitions */
 struct seek {
   struct ebml_type id;
@@ -2112,9 +2115,6 @@ ne_context_new(nestegg ** context, nestegg_io io, nestegg_log callback)
   return 0;
 }
 
-#define DOCTYPE_WEBM "webm"
-#define DOCTYPE_MKV  "matroska"
-
 static int
 ne_match_doc_type(nestegg_io io, int64_t max_offset, const char* doc_type)
 {
@@ -2218,7 +2218,7 @@ nestegg_init(nestegg ** context, nestegg_io io, nestegg_log callback, int64_t ma
   }
 
   if (ne_get_string(ctx->ebml.doctype, &doctype) != 0)
-    doctype = "matroska";
+    doctype = DOCTYPE_MKV;
   if (!!strcmp(doctype, DOCTYPE_WEBM) && !!strcmp(doctype, DOCTYPE_MKV)) {
     nestegg_destroy(ctx);
     return -1;
@@ -3310,7 +3310,7 @@ nestegg_has_cues(nestegg * ctx)
     ne_find_seek_for_id(ctx->segment.seek_head.head, ID_CUES);
 }
 
-static int nestegg_sniff(unsigned char const* buffer, size_t length,
+static int ne_sniff(unsigned char const* buffer, size_t length,
                          const char* doc_type)
 {
   nestegg_io io;
@@ -3329,10 +3329,10 @@ static int nestegg_sniff(unsigned char const* buffer, size_t length,
 
 int nestegg_sniff_webm(unsigned char const* buffer, size_t length)
 {
-  return nestegg_sniff(buffer, length, DOCTYPE_WEBM);
+  return ne_sniff(buffer, length, DOCTYPE_WEBM);
 }
 
 int nestegg_sniff_mkv(unsigned char const* buffer, size_t length)
 {
-  return nestegg_sniff(buffer, length, DOCTYPE_MKV);
+  return ne_sniff(buffer, length, DOCTYPE_MKV);
 }
