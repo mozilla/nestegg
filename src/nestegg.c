@@ -2544,14 +2544,14 @@ nestegg_track_codec_data_count(nestegg * ctx, unsigned int track,
 
   codec_id = nestegg_track_codec_id(ctx, track);
 
-  // Usually don't have codec private
+  /* Usually don't have codec private */
   if (codec_id == NESTEGG_CODEC_MP3 || codec_id == NESTEGG_CODEC_VP8 ||
       codec_id == NESTEGG_CODEC_VP9) {
     *count = 0;
     return 0;
   }
 
-  // Usually one codec private
+  /* Usually one codec private */
   if (codec_id == NESTEGG_CODEC_OPUS || codec_id == NESTEGG_CODEC_PCM ||
       codec_id == NESTEGG_CODEC_AAC  || codec_id == NESTEGG_CODEC_FLAC ||
       codec_id == NESTEGG_CODEC_AVC || codec_id == NESTEGG_CODEC_HEVC ||
@@ -2560,7 +2560,7 @@ nestegg_track_codec_data_count(nestegg * ctx, unsigned int track,
     return 0;
   }
 
-  // Vorbis spec requires three headers in the codec private
+  /* Vorbis spec requires three headers in the codec private */
   if (codec_id != NESTEGG_CODEC_VORBIS)
     return -1;
 
@@ -2585,6 +2585,7 @@ nestegg_track_codec_data(nestegg * ctx, unsigned int track, unsigned int item,
 {
   struct track_entry * entry;
   struct ebml_binary codec_private;
+  unsigned int count = 0;
 
   *data = NULL;
   *length = 0;
@@ -2593,7 +2594,6 @@ nestegg_track_codec_data(nestegg * ctx, unsigned int track, unsigned int item,
   if (!entry)
     return -1;
 
-  unsigned int count = 0;
   if (nestegg_track_codec_data_count(ctx, track, &count) != 0 || count == 0)
     return -1;
 
@@ -3157,21 +3157,23 @@ int
 nestegg_read_last_packet(nestegg * context, unsigned int track,
                          nestegg_packet ** packet)
 {
+  struct saved_state saved;
+  uint64_t max_end_ns = 0;
+  nestegg_packet * last_packet = NULL;
+
   if (!context || !packet) {
     return -1;
   }
 
   *packet = NULL;
 
-  // Save and restore the parser state later.
-  struct saved_state saved;
+  /* Save and restore the parser state later. */
   ne_ctx_save(context, &saved);
 
-  uint64_t max_end_ns = 0;
-  nestegg_packet * last_packet = NULL;
 
   for (;;) {
     nestegg_packet * pkt = NULL;
+    unsigned int pkt_track = 0;
     int r = nestegg_read_packet(context, &pkt);
     if (r == 0) {
       /* EOS */
@@ -3189,16 +3191,16 @@ nestegg_read_last_packet(nestegg * context, unsigned int track,
       return -1;
     }
 
-    unsigned int pkt_track = 0;
     if (nestegg_packet_track(pkt, &pkt_track) == 0 && pkt_track == track) {
-      // Calculate the end timestamp of this packet.
+      /* Calculate the end timestamp of this packet */
       uint64_t ts = 0;
       uint64_t dur = 0;
+      uint64_t end_ns = 0;
       nestegg_packet_tstamp(pkt, &ts);
       if (nestegg_packet_duration(pkt, &dur) != 0) {
         dur = 0;
       }
-      uint64_t end_ns = ts + dur;
+      end_ns = ts + dur;
       if (end_ns >= max_end_ns) {
         if (last_packet) {
           nestegg_free_packet(last_packet);
