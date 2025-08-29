@@ -3153,6 +3153,76 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
   return 1;
 }
 
+int
+nestegg_read_last_packet(nestegg * context, unsigned int track,
+                         nestegg_packet ** packet)
+{
+  if (!context || !packet) {
+    return -1;
+  }
+
+  *packet = NULL;
+
+  // Save and restore the parser state later.
+  struct saved_state saved;
+  ne_ctx_save(context, &saved);
+
+  uint64_t max_end_ns = 0;
+  nestegg_packet * last_packet = NULL;
+
+  for (;;) {
+    nestegg_packet * pkt = NULL;
+    int r = nestegg_read_packet(context, &pkt);
+    if (r == 0) {
+      /* EOS */
+      break;
+    }
+    if (r < 0) {
+      if (pkt) {
+        nestegg_free_packet(pkt);
+      }
+      if (last_packet) {
+        nestegg_free_packet(last_packet);
+        last_packet = NULL;
+      }
+      ne_ctx_restore(context, &saved);
+      return -1;
+    }
+
+    unsigned int pkt_track = 0;
+    if (nestegg_packet_track(pkt, &pkt_track) == 0 && pkt_track == track) {
+      // Calculate the end timestamp of this packet.
+      uint64_t ts = 0;
+      uint64_t dur = 0;
+      nestegg_packet_tstamp(pkt, &ts);
+      if (nestegg_packet_duration(pkt, &dur) != 0) {
+        dur = 0;
+      }
+      uint64_t end_ns = ts + dur;
+      if (end_ns >= max_end_ns) {
+        if (last_packet) {
+          nestegg_free_packet(last_packet);
+        }
+        last_packet = pkt;
+        max_end_ns = end_ns;
+        pkt = NULL;
+      }
+    }
+
+    if (pkt) {
+      nestegg_free_packet(pkt);
+    }
+  }
+
+  ne_ctx_restore(context, &saved);
+
+  if (!last_packet) {
+    return -1;
+  }
+  *packet = last_packet;
+  return 0;
+}
+
 void
 nestegg_free_packet(nestegg_packet * pkt)
 {
