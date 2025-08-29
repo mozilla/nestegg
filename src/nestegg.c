@@ -177,6 +177,19 @@ enum ebml_type_enum {
 #define TRACK_ID_AV1                "V_AV1"
 #define TRACK_ID_VORBIS             "A_VORBIS"
 #define TRACK_ID_OPUS               "A_OPUS"
+#define TRACK_ID_AVC                "V_MPEG4/ISO/AVC"
+#define TRACK_ID_HEVC               "V_MPEGH/ISO/HEVC"
+#define TRACK_ID_AAC                "A_AAC"
+#define TRACK_ID_AAC_MP4_LC         "A_AAC/MPEG4/LC"
+#define TRACK_ID_AAC_MP4_LC_SBR     "A_AAC/MPEG4/LC/SBR"
+#define TRACK_ID_AAC_MP4_LTP        "A_AAC/MPEG4/LTP"
+#define TRACK_ID_AAC_MP4_MAIN       "A_AAC/MPEG4/MAIN"
+#define TRACK_ID_AAC_MP4_SSR        "A_AAC/MPEG4/SSR"
+#define TRACK_ID_FLAC               "A_FLAC"
+#define TRACK_ID_MP3                "A_MPEG/L3"
+#define TRACK_ID_PCM_FLOAT          "A_PCM/FLOAT/IEEE"
+#define TRACK_ID_PCM_INT_BE         "A_PCM/INT/BIG"
+#define TRACK_ID_PCM_INT_LE         "A_PCM/INT/LIT"
 
 /* Track Encryption */
 #define CONTENT_ENC_ALGO_AES        5
@@ -2470,6 +2483,7 @@ nestegg_track_codec_id(nestegg * ctx, unsigned int track)
   if (ne_get_string(entry->codec_id, &codec_id) != 0)
     return -1;
 
+  ctx->log(ctx, NESTEGG_LOG_DEBUG, "nestegg_track_codec_id: %s\n", codec_id);
   if (strcmp(codec_id, TRACK_ID_VP8) == 0)
     return NESTEGG_CODEC_VP8;
 
@@ -2484,6 +2498,31 @@ nestegg_track_codec_id(nestegg * ctx, unsigned int track)
 
   if (strcmp(codec_id, TRACK_ID_OPUS) == 0)
     return NESTEGG_CODEC_OPUS;
+
+  if (strcmp(codec_id, TRACK_ID_AVC) == 0)
+    return NESTEGG_CODEC_AVC;
+
+  if (strcmp(codec_id, TRACK_ID_HEVC) == 0)
+    return NESTEGG_CODEC_HEVC;
+
+  if (strcmp(codec_id, TRACK_ID_AAC) == 0 ||
+      strcmp(codec_id, TRACK_ID_AAC_MP4_LC) == 0 ||
+      strcmp(codec_id, TRACK_ID_AAC_MP4_LC_SBR) == 0 ||
+      strcmp(codec_id, TRACK_ID_AAC_MP4_LTP) == 0 ||
+      strcmp(codec_id, TRACK_ID_AAC_MP4_MAIN) == 0 ||
+      strcmp(codec_id, TRACK_ID_AAC_MP4_SSR) == 0)
+    return NESTEGG_CODEC_AAC;
+
+  if (strcmp(codec_id, TRACK_ID_FLAC) == 0)
+    return NESTEGG_CODEC_FLAC;
+
+  if (strcmp(codec_id, TRACK_ID_MP3) == 0)
+    return NESTEGG_CODEC_MP3;
+
+  if (strcmp(codec_id, TRACK_ID_PCM_FLOAT) == 0 ||
+      strcmp(codec_id, TRACK_ID_PCM_INT_BE) == 0 ||
+      strcmp(codec_id, TRACK_ID_PCM_INT_LE) == 0)
+    return NESTEGG_CODEC_PCM;
 
   return NESTEGG_CODEC_UNKNOWN;
 }
@@ -2505,11 +2544,23 @@ nestegg_track_codec_data_count(nestegg * ctx, unsigned int track,
 
   codec_id = nestegg_track_codec_id(ctx, track);
 
-  if (codec_id == NESTEGG_CODEC_OPUS) {
+  // Usually don't have codec private
+  if (codec_id == NESTEGG_CODEC_MP3 || codec_id == NESTEGG_CODEC_VP8 ||
+      codec_id == NESTEGG_CODEC_VP9) {
+    *count = 0;
+    return 0;
+  }
+
+  // Usually one codec private
+  if (codec_id == NESTEGG_CODEC_OPUS || codec_id == NESTEGG_CODEC_PCM ||
+      codec_id == NESTEGG_CODEC_AAC  || codec_id == NESTEGG_CODEC_FLAC ||
+      codec_id == NESTEGG_CODEC_AVC || codec_id == NESTEGG_CODEC_HEVC ||
+      codec_id == NESTEGG_CODEC_AV1) {
     *count = 1;
     return 0;
   }
 
+  // Vorbis spec requires three headers in the codec private
   if (codec_id != NESTEGG_CODEC_VORBIS)
     return -1;
 
@@ -2542,8 +2593,8 @@ nestegg_track_codec_data(nestegg * ctx, unsigned int track, unsigned int item,
   if (!entry)
     return -1;
 
-  if (nestegg_track_codec_id(ctx, track) != NESTEGG_CODEC_VORBIS &&
-      nestegg_track_codec_id(ctx, track) != NESTEGG_CODEC_OPUS)
+  unsigned int count = 0;
+  if (nestegg_track_codec_data_count(ctx, track, &count) != 0 || count == 0)
     return -1;
 
   if (ne_get_binary(entry->codec_private, &codec_private) != 0)
