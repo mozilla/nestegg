@@ -3170,7 +3170,6 @@ nestegg_read_last_packet(nestegg * context, unsigned int track,
   /* Save and restore the parser state later. */
   ne_ctx_save(context, &saved);
 
-
   for (;;) {
     nestegg_packet * pkt = NULL;
     unsigned int pkt_track = 0;

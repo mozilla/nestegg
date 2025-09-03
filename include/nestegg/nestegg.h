@@ -377,11 +377,10 @@ int nestegg_read_reset(nestegg * context);
     @retval -1 Error. */
 int nestegg_read_packet(nestegg * context, nestegg_packet ** packet);
 
-/** Read the last-ending packet for a track without affecting current parser
-    state.
+/** Read the last packet for a track without affecting current parser state.
     @param context  Stream context initialized by #nestegg_init.
     @param track    Zero based track number.
-    @param packet  Storage for the returned nestegg_packet.
+    @param packet   Storage for the returned nestegg_packet.
     @retval 0       Success.
     @retval -1      Error. */
 int nestegg_read_last_packet(nestegg * context,
