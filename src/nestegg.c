@@ -3460,9 +3460,9 @@ int nestegg_sniff_mkv(unsigned char const* buffer, size_t length)
 }
 
 /* Count frames in a Block/SimpleBlock from its lacing header, then skip the
-   remaining payload. Sets framesOut; returns 1 on success, <0 on error. */
+   remaining payload. Sets frames_out on success; returns 1 on success, <0 on error. */
 static int
-ne_read_block_lacing(nestegg * ctx, uint64_t block_size, uint64_t* framesOut)
+ne_read_block_lacing(nestegg * ctx, uint64_t block_size, uint64_t* frames_out)
 {
   int r;
   int64_t timecode;
@@ -3521,17 +3521,17 @@ ne_read_block_lacing(nestegg * ctx, uint64_t block_size, uint64_t* framesOut)
       return r;
   }
 
-  *framesOut = frames;
+  *frames_out = frames;
   return 1;
 }
 
 /* Consume the payload of a SimpleBlock or BlockGroup:
-   - If block-like, count frames via lacing and add to addFramesOut.
+   - If block-like, count frames via lacing and add to frames_out.
    - If not, skip the payload.
    Always advances I/O to the end of the element.
    Returns 1 on success, <0 on error. */
 static int
-ne_sum_block_or_group(nestegg * ctx, uint64_t id, uint64_t size, uint64_t * framesOut)
+ne_sum_block_or_group(nestegg * ctx, uint64_t id, uint64_t size, uint64_t * frames_out)
 {
   int r;
 
@@ -3541,7 +3541,7 @@ ne_sum_block_or_group(nestegg * ctx, uint64_t id, uint64_t size, uint64_t * fram
     r = ne_read_block_lacing(ctx, size, &frames);
     if (r != 1)
       return r;
-    *framesOut += frames;
+    *frames_out += frames;
     return 1;
   }
 
@@ -3560,7 +3560,7 @@ ne_sum_block_or_group(nestegg * ctx, uint64_t id, uint64_t size, uint64_t * fram
         r = ne_read_block_lacing(ctx, gsize, &frames);
         if (r != 1)
           return r;
-        *framesOut += frames;
+        *frames_out += frames;
       } else {
         r = ne_io_read_skip(ctx->io, gsize);
         if (r != 1)
@@ -3582,7 +3582,7 @@ ne_sum_block_or_group(nestegg * ctx, uint64_t id, uint64_t size, uint64_t * fram
    Returns 1 on success (Cluster found), 0 on clean EOS before any Cluster,
    <0 on error. */
 static int
-ne_read_cluster_frames_count(nestegg * ctx, uint64_t * framesOut)
+ne_read_cluster_frames_count(nestegg * ctx, uint64_t * frames_out)
 {
   int r;
   uint64_t id, size;
@@ -3625,7 +3625,7 @@ ne_read_cluster_frames_count(nestegg * ctx, uint64_t * framesOut)
         return r;
     }
 
-    *framesOut = totalFrames;
+    *frames_out = totalFrames;
     ctx->log(ctx, NESTEGG_LOG_DEBUG,
              "ne_read_cluster_frames_count: totalFrames=%llu", totalFrames);
     return 1;
@@ -3633,13 +3633,13 @@ ne_read_cluster_frames_count(nestegg * ctx, uint64_t * framesOut)
 }
 
 int
-nestegg_read_total_frames_count(nestegg * context, uint64_t * framesOut)
+nestegg_read_total_frames_count(nestegg * context, uint64_t * frames_out)
 {
   struct saved_state saved;
   uint64_t totalFrames;
   int r;
 
-  if (!context || !framesOut)
+  if (!context || !frames_out)
     return -1;
 
   ne_ctx_save(context, &saved);
@@ -3662,6 +3662,6 @@ nestegg_read_total_frames_count(nestegg * context, uint64_t * framesOut)
 
   ne_ctx_restore(context, &saved);
 
-  *framesOut = totalFrames;
+  *frames_out = totalFrames;
   return 0;
 }
