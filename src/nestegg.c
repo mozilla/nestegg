@@ -136,6 +136,11 @@
 #define ID_LUMINANCE_MAX              0x55d9
 #define ID_LUMINANCE_MIN              0x55da
 
+/* Other Elements */
+#define ID_CHAPTERS                   0x1043a770
+#define ID_ATTACHMENTS                0x1941a469
+#define ID_TAGS                       0x1254c367
+
 /* EBML Types */
 enum ebml_type_enum {
   TYPE_UNKNOWN,
@@ -3578,6 +3583,25 @@ ne_sum_block_or_group(nestegg * ctx, uint64_t id, uint64_t size, uint64_t * fram
   return 1;
 }
 
+/* Returns non-zero if 'size' equals the EBML unknown-size pattern for any VINT
+   length. Patterns (data bits all 1): 0x7F, 0x3FFF, 0x1FFFFF, 0x0FFFFFFF,
+   0x07FFFFFFFF, 0x03FFFFFFFFFF, 0x01FFFFFFFFFFFF, 0x00FFFFFFFFFFFFFF. */
+static int
+ne_size_is_unknown(uint64_t size)
+{
+  int len;
+  for (len = 1; len <= 8; ++len) {
+    uint64_t mask;
+    if (len == 8)
+      mask = 0x00FFFFFFFFFFFFFFULL;  /* 56 data bits = all ones */
+    else
+      mask = (1ULL << (7 * len)) - 1ULL; /* 7 data bits per byte */
+    if (size == mask)
+      return 1;
+  }
+  return 0;
+}
+
 /* Read ONE Cluster and return the sum of frames of ALL SimpleBlock/Block in it.
    Returns 1 on success (Cluster found), 0 on clean EOS before any Cluster,
    <0 on error. */
@@ -3594,12 +3618,10 @@ ne_read_cluster_frames_count(nestegg * ctx, uint64_t * frames_out)
   /* Find the next Cluster at the top level. */
   for (;;) {
     r = ne_read_element(ctx, &id, &size);
-    if (r == 0) {
+    if (r == 0)
       return 0; /* EOS before any Cluster */
-    }
-    if (r != 1) {
-      return r; /* error */
-    }
+    if (r != 1)
+      return r;
 
     if (id != ID_CLUSTER) {
       /* Not a Cluster: consume and keep scanning. */
@@ -3609,9 +3631,51 @@ ne_read_cluster_frames_count(nestegg * ctx, uint64_t * frames_out)
       continue;
     }
 
-    /* Enter Cluster body by range. */
-    cluster_end = ne_io_tell(ctx->io) + (int64_t) size;
     totalFrames = 0;
+
+    if (ne_size_is_unknown(size)) {
+      for (;;) {
+        uint64_t nid, nsize;
+
+        r = ne_peek_element(ctx, &nid, &nsize);
+        if (r == 0)
+          break; /* EOS ends the unknown-sized Cluster */
+        if (r != 1)
+          return r;
+
+        /* Stop at next top-level element without consuming it. */
+        if (nid == ID_EBML        ||
+            nid == ID_SEGMENT     ||
+            nid == ID_SEEK_HEAD   ||
+            nid == ID_INFO        ||
+            nid == ID_TRACKS      ||
+            nid == ID_CHAPTERS    ||
+            nid == ID_CLUSTER     ||
+            nid == ID_CUES        ||
+            nid == ID_ATTACHMENTS ||
+            nid == ID_TAGS) {
+          break;
+        }
+
+        r = ne_read_element(ctx, &nid, &nsize);
+        if (r != 1)
+          return r;
+
+        /* Sum frames for blocks; skip other children. */
+        r = ne_sum_block_or_group(ctx, nid, nsize, &totalFrames);
+        if (r != 1)
+          return r;
+      }
+
+      *frames_out = totalFrames;
+      ctx->log(ctx, NESTEGG_LOG_DEBUG,
+               "ne_read_cluster_frames_count: totalFrames=%llu (unknown-sized Cluster)",
+               totalFrames);
+      return 1;
+    }
+
+    /* Known-sized Cluster: read until cluster_end. */
+    cluster_end = ne_io_tell(ctx->io) + (int64_t) size;
 
     while (ne_io_tell(ctx->io) < cluster_end) {
       uint64_t cid, csize;
