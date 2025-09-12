@@ -89,6 +89,7 @@
 #define ID_DISPLAY_WIDTH            0x54b0
 #define ID_DISPLAY_HEIGHT           0x54ba
 #define ID_COLOUR                   0x55b0
+#define ID_PROJECTION               0x7670
 
 /* Audio Elements */
 #define ID_AUDIO                    0xe1
@@ -135,6 +136,12 @@
 #define ID_WHITE_POINT_CHROMATICITY_Y 0x55d8
 #define ID_LUMINANCE_MAX              0x55d9
 #define ID_LUMINANCE_MIN              0x55da
+
+/* Projection Elements */
+#define ID_PROJECTION_TYPE            0x7671
+#define ID_PROJECTION_POSE_YAW        0x7673
+#define ID_PROJECTION_POSE_PITCH      0x7674
+#define ID_PROJECTION_POSE_ROLL       0x7675
 
 /* Other Elements */
 #define ID_CHAPTERS                   0x1043a770
@@ -296,6 +303,13 @@ struct colour {
   struct mastering_metadata mastering_metadata;
 };
 
+struct projection {
+  struct ebml_type type;
+  struct ebml_type pose_yaw;
+  struct ebml_type pose_pitch;
+  struct ebml_type pose_roll;
+};
+
 struct video {
   struct ebml_type stereo_mode;
   struct ebml_type alpha_mode;
@@ -308,6 +322,7 @@ struct video {
   struct ebml_type display_width;
   struct ebml_type display_height;
   struct colour colour;
+  struct projection projection;
 };
 
 struct audio {
@@ -538,6 +553,14 @@ static struct ebml_element_desc ne_colour_elements[] = {
   E_LAST
 };
 
+static struct ebml_element_desc ne_projection_elements[] = {
+  E_FIELD(ID_PROJECTION_TYPE, TYPE_UINT, struct projection, type),
+  E_FIELD(ID_PROJECTION_POSE_YAW, TYPE_FLOAT, struct projection, pose_yaw),
+  E_FIELD(ID_PROJECTION_POSE_PITCH, TYPE_FLOAT, struct projection, pose_pitch),
+  E_FIELD(ID_PROJECTION_POSE_ROLL, TYPE_FLOAT, struct projection, pose_roll),
+  E_LAST
+};
+
 static struct ebml_element_desc ne_video_elements[] = {
   E_FIELD(ID_STEREO_MODE, TYPE_UINT, struct video, stereo_mode),
   E_FIELD(ID_ALPHA_MODE, TYPE_UINT, struct video, alpha_mode),
@@ -550,6 +573,7 @@ static struct ebml_element_desc ne_video_elements[] = {
   E_FIELD(ID_DISPLAY_WIDTH, TYPE_UINT, struct video, display_width),
   E_FIELD(ID_DISPLAY_HEIGHT, TYPE_UINT, struct video, display_height),
   E_SINGLE_MASTER(ID_COLOUR, TYPE_MASTER, struct video, colour),
+  E_SINGLE_MASTER(ID_PROJECTION, TYPE_MASTER, struct video, projection),
   E_LAST
 };
 
@@ -2734,6 +2758,22 @@ nestegg_track_video_params(nestegg * ctx, unsigned int track,
   value = 2;
   ne_get_uint(entry->video.colour.primaries, &value);
   params->primaries = value;
+
+  value = 0;
+  ne_get_uint(entry->video.projection.type, &value);
+  params->projection_type = value;
+
+  fvalue = 0;
+  ne_get_float(entry->video.projection.pose_yaw, &fvalue);
+  params->projection_pose_yaw = fvalue;
+
+  fvalue = 0;
+  ne_get_float(entry->video.projection.pose_pitch, &fvalue);
+  params->projection_pose_pitch = fvalue;
+
+  fvalue = 0;
+  ne_get_float(entry->video.projection.pose_roll, &fvalue);
+  params->projection_pose_roll = fvalue;
 
   fvalue = strtod("NaN", NULL);
   ne_get_float(entry->video.colour.mastering_metadata.primary_r_chromacity_x, &fvalue);
