@@ -1838,7 +1838,10 @@ ne_read_block_additions(nestegg * ctx, uint64_t block_size, struct block_additio
 
         has_data = 1;
         data_size = size;
-        if (data_size != 0 && data_size < LIMIT_FRAME) {
+        if (data_size >= LIMIT_FRAME) {
+          return -1;
+        }
+        if (data_size != 0) {
           data = ne_alloc(data_size);
           if (!data)
             return -1;
