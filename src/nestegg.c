@@ -2968,24 +2968,22 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
 
     switch (id) {
     case ID_CLUSTER: {
-      r = ne_read_element(ctx, &id, &size);
-      if (r != 1)
-        return r;
-
-      /* Matroska may place a CRC32 before the Timecode. Skip and continue parsing. */
-      if (id == ID_CRC32) {
-        r = ne_io_read_skip(ctx->io, size);
-        if (r != 1)
-          return r;
-
+      for (;;) {
         r = ne_read_element(ctx, &id, &size);
         if (r != 1)
           return r;
-      }
 
-      /* Timecode must be the first element in a Cluster, per WebM spec. */
-      if (id != ID_TIMECODE)
-        return -1;
+        if (id == ID_TIMECODE)
+          break;
+
+        /* Block elements cannot precede the Timecode. */
+        if (id == ID_SIMPLE_BLOCK || id == ID_BLOCK_GROUP)
+          return -1;
+
+        r = ne_io_read_skip(ctx->io, size);
+        if (r != 1)
+          return r;
+      }
 
       r = ne_read_uint(ctx->io, &ctx->cluster_timecode, size);
       if (r != 1)
