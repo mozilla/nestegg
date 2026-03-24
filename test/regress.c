@@ -180,6 +180,16 @@ test(char const * path, int limit, int resume, int fuzz)
                  vparams.matrix_coefficients, vparams.range,
                  vparams.transfer_characteristics, vparams.primaries);
         }
+        if (vparams.projection_type != 0 ||
+            vparams.projection_pose_yaw != 0 ||
+            vparams.projection_pose_pitch != 0 ||
+            vparams.projection_pose_roll != 0) {
+          printf(" %u %f %f %f",
+                 vparams.projection_type,
+                 vparams.projection_pose_yaw,
+                 vparams.projection_pose_pitch,
+                 vparams.projection_pose_roll);
+        }
         if (!isnan(vparams.primary_r_chromacity_x) ||
             !isnan(vparams.primary_r_chromacity_y) ||
             !isnan(vparams.primary_g_chromacity_x) ||
