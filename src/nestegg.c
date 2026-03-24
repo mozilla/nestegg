@@ -795,7 +795,7 @@ ne_read_svint(nestegg_io * io, int64_t * value, uint64_t * length)
   r = ne_bare_read_vint(io, &uvalue, &ulength, MASK_FIRST_BIT);
   if (r != 1)
     return r;
-  *value = uvalue - svint_subtr[ulength - 1];
+  *value = (int64_t) uvalue - svint_subtr[ulength - 1];
   if (length)
     *length = ulength;
   return r;
@@ -842,7 +842,7 @@ ne_read_int(nestegg_io * io, int64_t * val, uint64_t length)
     } else {
       base = 0;
     }
-    *val = uval - base;
+    *val = (int64_t) uval - (int64_t) base;
   } else {
     *val = (int64_t) uval;
   }
@@ -1369,7 +1369,7 @@ ne_read_ebml_lacing(nestegg_io * io, size_t block, size_t * read, uint64_t n, ui
 {
   int r;
   uint64_t lace, sum, length;
-  int64_t slace;
+  int64_t slace, frame_size;
   size_t i = 0;
 
   r = ne_read_vint(io, &lace, &length);
@@ -1388,7 +1388,10 @@ ne_read_ebml_lacing(nestegg_io * io, size_t block, size_t * read, uint64_t n, ui
     if (r != 1)
       return r;
     *read += length;
-    sizes[i] = sizes[i - 1] + slace;
+    frame_size = (int64_t) sizes[i - 1] + slace;
+    if (frame_size < 0)
+      return -1;
+    sizes[i] = frame_size;
     sum += sizes[i];
     i += 1;
   }
@@ -1399,6 +1402,14 @@ ne_read_ebml_lacing(nestegg_io * io, size_t block, size_t * read, uint64_t n, ui
   /* Last frame is the remainder of the block. */
   sizes[i] = block - *read - sum;
   return 1;
+}
+
+static uint64_t
+ne_saturate_mul_uint64(uint64_t a, uint64_t b)
+{
+  if (b != 0 && a > UINT64_MAX / b)
+    return UINT64_MAX;
+  return a * b;
 }
 
 static uint64_t
@@ -1655,7 +1666,7 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
   if (!pkt)
     return -1;
   pkt->track = track;
-  pkt->timecode = abs_timecode * tc_scale * track_scale;
+  pkt->timecode = ne_saturate_mul_uint64((uint64_t) abs_timecode, tc_scale) * track_scale;
   pkt->keyframe = keyframe;
 
   ctx->log(ctx, NESTEGG_LOG_DEBUG, "%sblock t %lld pts %f f %llx frames: %llu",
@@ -1886,7 +1897,8 @@ ne_buf_read_id(unsigned char const * p, size_t length)
 {
   uint64_t id = 0;
 
-  while (length--) {
+  while (length > 0) {
+    length--;
     id <<= 8;
     id |= *p++;
   }
@@ -3062,7 +3074,7 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
             }
             return -1;
           }
-          block_duration *= tc_scale;
+          block_duration = ne_saturate_mul_uint64(block_duration, tc_scale);
           read_block_duration = 1;
           break;
         }
