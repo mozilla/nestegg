@@ -1360,6 +1360,9 @@ ne_read_xiph_lace_value(nestegg_io * io, uint64_t * value, size_t * consumed)
       return r;
     *consumed += 1;
     *value += lace;
+    /* Check frame size limit early to defeat crafted lace values. */
+    if (*value > LIMIT_FRAME)
+      return -1;
   }
 
   return 1;
