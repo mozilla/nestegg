@@ -531,6 +531,16 @@ int nestegg_packet_offsets(nestegg_packet * packet,
 int nestegg_packet_reference_block(nestegg_packet * packet,
                                    int64_t * reference_block);
 
+/** Query the logical stream position after a packet has been fully read.
+    For SimpleBlock packets this is the end of the block; for BlockGroup
+    packets this is the end of the entire group including any
+    BlockDuration, ReferenceBlock, and BlockAdditions elements.
+    @param packet     Packet initialized by #nestegg_read_packet.
+    @param end_offset Storage for the queried offset.
+    @retval  0 Success.
+    @retval -1 Error. */
+int nestegg_packet_end_offset(nestegg_packet * packet, int64_t * end_offset);
+
 /** Query the presence of cues.
     @param context  Stream context initialized by #nestegg_init.
     @retval 0 The media has no cues.
