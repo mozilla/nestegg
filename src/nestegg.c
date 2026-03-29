@@ -1224,10 +1224,17 @@ ne_parse(nestegg * ctx, struct ebml_element_desc * top_level, int64_t max_offset
   assert(ctx->ancestor);
 
   for (;;) {
-    if (max_offset > 0 && ne_io_tell(ctx->io) >= max_offset) {
-      /* Reached end of offset allowed for parsing - return gracefully */
-      r = 1;
-      break;
+    if (max_offset > 0) {
+      int64_t offset = ne_io_tell(ctx->io);
+      if (offset < 0) {
+        r = -1;
+        break;
+      }
+      if (offset >= max_offset) {
+        /* Reached end of offset allowed for parsing - return gracefully */
+        r = 1;
+        break;
+      }
     }
     r = ne_peek_element(ctx, &id, &size);
     if (r != 1)
@@ -1824,9 +1831,17 @@ ne_read_block_additions(nestegg * ctx, uint64_t block_size, struct block_additio
 
   assert(*pkt_block_additional == NULL);
 
-  block_additions_end = ne_io_tell(ctx->io) + block_size;
+  block_additions_end = ne_io_tell(ctx->io);
+  if (block_additions_end < 0)
+    return -1;
+  block_additions_end += block_size;
 
-  while (ne_io_tell(ctx->io) < block_additions_end) {
+  while (1) {
+    int64_t pos = ne_io_tell(ctx->io);
+    if (pos < 0)
+      return -1;
+    if (pos >= block_additions_end)
+      break;
     add_id = 1;
     data = NULL;
     has_data = 0;
@@ -1846,9 +1861,19 @@ ne_read_block_additions(nestegg * ctx, uint64_t block_size, struct block_additio
       continue;
     }
 
-    block_more_end = ne_io_tell(ctx->io) + size;
+    block_more_end = ne_io_tell(ctx->io);
+    if (block_more_end < 0)
+      return -1;
+    block_more_end += size;
 
-    while (ne_io_tell(ctx->io) < block_more_end) {
+    while (1) {
+      int64_t pos = ne_io_tell(ctx->io);
+      if (pos < 0) {
+        free(data);
+        return -1;
+      }
+      if (pos >= block_more_end)
+        break;
       r = ne_read_element(ctx, &id, &size);
       if (r != 1) {
         free(data);
@@ -3075,10 +3100,24 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
       struct block_additional * block_additional = NULL;
       uint64_t tc_scale;
 
-      block_group_end = ne_io_tell(ctx->io) + size;
+      block_group_end = ne_io_tell(ctx->io);
+      if (block_group_end < 0)
+        return -1;
+      block_group_end += size;
 
       /* Read the entire BlockGroup manually. */
-      while (ne_io_tell(ctx->io) < block_group_end) {
+      while (1) {
+        int64_t pos = ne_io_tell(ctx->io);
+        if (pos < 0) {
+          ne_free_block_additions(block_additional);
+          if (*pkt) {
+            nestegg_free_packet(*pkt);
+            *pkt = NULL;
+          }
+          return -1;
+        }
+        if (pos >= block_group_end)
+          break;
         r = ne_read_element(ctx, &id, &size);
         if (r != 1) {
           ne_free_block_additions(block_additional);
@@ -3619,9 +3658,17 @@ ne_sum_block_or_group(nestegg * ctx, uint64_t id, uint64_t size, uint64_t * fram
 
   if (id == ID_BLOCK_GROUP) {
     int64_t group_end;
-    group_end = ne_io_tell(ctx->io) + (int64_t) size;
-    while (ne_io_tell(ctx->io) < group_end) {
+    group_end = ne_io_tell(ctx->io);
+    if (group_end < 0)
+      return -1;
+    group_end += (int64_t) size;
+    while (1) {
       uint64_t gid, gsize;
+      int64_t pos = ne_io_tell(ctx->io);
+      if (pos < 0)
+        return -1;
+      if (pos >= group_end)
+        break;
       r = ne_read_element(ctx, &gid, &gsize);
       if (r != 1)
         return r;
@@ -3742,10 +3789,18 @@ ne_read_cluster_frames_count(nestegg * ctx, uint64_t * frames_out)
     }
 
     /* Known-sized Cluster: read until cluster_end. */
-    cluster_end = ne_io_tell(ctx->io) + (int64_t) size;
+    cluster_end = ne_io_tell(ctx->io);
+    if (cluster_end < 0)
+      return -1;
+    cluster_end += (int64_t) size;
 
-    while (ne_io_tell(ctx->io) < cluster_end) {
+    while (1) {
       uint64_t cid, csize;
+      int64_t pos = ne_io_tell(ctx->io);
+      if (pos < 0)
+        return -1;
+      if (pos >= cluster_end)
+        break;
       r = ne_read_element(ctx, &cid, &csize);
       if (r != 1)
         return r;
