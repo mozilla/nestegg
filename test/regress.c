@@ -32,8 +32,12 @@ print_hash(uint8_t const * data, size_t len)
 }
 
 static int64_t fake_eos = -1;
+static int seek_fail_count = 0;
 
-static int
+static size_t read_max = 0; /* 0 = unlimited */
+static int64_t read_max_offset_seen = 0;
+
+static int64_t
 stdio_read(void * p, size_t length, void * file)
 {
   size_t r;
@@ -44,13 +48,26 @@ stdio_read(void * p, size_t length, void * file)
 
   assert(fake_eos == -1 || start_offset <= fake_eos);
   if (fake_eos != -1 && end_offset > fake_eos) {
-    return 0;
+    if (start_offset >= fake_eos)
+      return 0;
+    length = fake_eos - start_offset;
   }
 
-  r = fread(p, length, 1, fp);
+  if (read_max > 0 && length > read_max)
+    length = read_max;
+
+  r = fread(p, 1, length, fp);
   if (r == 0 && feof(fp))
     return 0;
-  return r == 0 ? -1 : 1;
+  if (r == 0)
+    return -1;
+
+  {
+    int64_t pos = ftell(fp);
+    if (pos > read_max_offset_seen)
+      read_max_offset_seen = pos;
+  }
+  return r;
 }
 
 static int
@@ -61,6 +78,10 @@ stdio_seek(int64_t offset, int whence, void * file)
   assert(off == offset);
   /* Because the fake_eos stuff is lazy calculating offsets. */
   assert(whence == SEEK_SET);
+  if (seek_fail_count > 0) {
+    seek_fail_count -= 1;
+    return -1;
+  }
   if (fake_eos != -1 && offset > fake_eos) {
     return -1;
   }
@@ -76,10 +97,9 @@ stdio_tell(void * fp)
 }
 
 int
-test(char const * path, int limit, int resume, int fuzz)
+test(char const * path, int64_t read_limit, int resume, int fuzz)
 {
   FILE * fp;
-  int64_t read_limit = -1;
   int64_t true_eos = -1;
   int r, type, id, track_encoding, pkt_keyframe, pkt_encryption, cues;
   nestegg * ctx;
@@ -96,18 +116,17 @@ test(char const * path, int limit, int resume, int fuzz)
   uint8_t pkt_num_offsets;
   uint32_t const * pkt_partition_offsets;
 
-  nestegg_io io = {
-    stdio_read,
-    stdio_seek,
-    stdio_tell,
-    NULL
-  };
+  nestegg_io io;
+  memset(&io, 0, sizeof(io));
+  io.read = stdio_read;
+  io.seek = stdio_seek;
+  io.tell = stdio_tell;
 
   fp = fopen(path, "rb");
   if (!fp)
     return EXIT_FAILURE;
 
-  if (limit) {
+  if (read_limit == 0) {
     fseek(fp, 0, SEEK_END);
     read_limit = ftell(fp);
     fseek(fp, 0, SEEK_SET);
@@ -122,9 +141,15 @@ test(char const * path, int limit, int resume, int fuzz)
   io.userdata = fp;
 
   ctx = NULL;
+  read_max_offset_seen = 0;
   r = nestegg_init(&ctx, io, NULL, read_limit);
   if (r != 0)
     return EXIT_FAILURE;
+
+  /* When max_offset is set, verify the I/O callback was never invoked
+     past that offset. */
+  if (read_limit > 0)
+    assert(read_max_offset_seen <= read_limit);
 
   nestegg_track_count(ctx, &tracks);
   nestegg_duration(ctx, &duration);
@@ -259,6 +284,11 @@ test(char const * path, int limit, int resume, int fuzz)
       break;
     }
     nestegg_packet_track(pkt, &pkt_track);
+    {
+      int64_t pkt_end_offset;
+      nestegg_packet_end_offset(pkt, &pkt_end_offset);
+      assert(pkt_end_offset > 0);
+    }
     pkt_keyframe = nestegg_packet_has_keyframe(pkt);
     nestegg_packet_count(pkt, &pkt_cnt);
     nestegg_packet_tstamp(pkt, &pkt_tstamp);
@@ -335,22 +365,193 @@ test(char const * path, int limit, int resume, int fuzz)
       break;
   }
 
+  /* Test seek-then-read: seek to the middle of the stream using cues,
+     then verify we can still read packets. */
+  if (duration != (uint64_t) ~0 && cues) {
+    r = nestegg_track_seek(ctx, 0, duration / 2);
+    if (r == 0) {
+      pkt = NULL;
+      r = nestegg_read_packet(ctx, &pkt);
+      if (r == 1 && pkt) {
+        nestegg_packet_tstamp(pkt, &pkt_tstamp);
+        if (!fuzz)
+          printf("seek %llu\n", (unsigned long long) pkt_tstamp);
+        nestegg_free_packet(pkt);
+      }
+    }
+  }
+
   nestegg_destroy(ctx);
   fclose(fp);
   return EXIT_SUCCESS;
 }
 
+static void
+test_read_reset_seek_failure(char const * path, int64_t read_limit)
+{
+  FILE * fp;
+  nestegg * ctx;
+  nestegg_packet * last_pkt;
+  nestegg_packet * pkt;
+  uint64_t total_frames;
+  nestegg_io io;
+  uint64_t duration = ~0;
+  int cues, r;
+  int64_t saved_fake_eos = fake_eos;
+  int saved_seek_fail_count = seek_fail_count;
+
+  memset(&io, 0, sizeof(io));
+  io.read = stdio_read;
+  io.seek = stdio_seek;
+  io.tell = stdio_tell;
+
+  fp = fopen(path, "rb");
+  assert(fp);
+
+  if (read_limit == 0) {
+    fseek(fp, 0, SEEK_END);
+    read_limit = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+  }
+
+  io.userdata = fp;
+
+  fake_eos = -1;
+  seek_fail_count = 0;
+
+  ctx = NULL;
+  r = nestegg_init(&ctx, io, NULL, read_limit);
+  assert(r == 0);
+
+  nestegg_duration(ctx, &duration);
+  cues = nestegg_has_cues(ctx);
+
+  if (duration != (uint64_t) ~0 && cues) {
+    r = nestegg_track_seek(ctx, 0, duration / 2);
+    assert(r == 0);
+
+    /* Block the next packet read at the current raw stream position so the
+       subsequent read_reset must seek back to recover. */
+    fake_eos = ftell(fp);
+    pkt = NULL;
+    r = nestegg_read_packet(ctx, &pkt);
+    assert(r <= 0);
+    assert(pkt == NULL);
+
+    seek_fail_count = 1;
+    r = nestegg_read_reset(ctx);
+    assert(r == -1);
+
+    last_pkt = NULL;
+    r = nestegg_read_last_packet(ctx, 0, &last_pkt);
+    assert(r == -1);
+    assert(last_pkt == NULL);
+
+    total_frames = 0;
+    r = nestegg_read_total_frames_count(ctx, &total_frames);
+    assert(r == -1);
+
+    fake_eos = -1;
+    r = nestegg_read_reset(ctx);
+    assert(r == 0);
+
+    pkt = NULL;
+    r = nestegg_read_packet(ctx, &pkt);
+    assert(r == 1);
+    assert(pkt != NULL);
+    nestegg_free_packet(pkt);
+
+    /* Force restore failure inside helper scans too, not just read_reset. */
+    r = nestegg_track_seek(ctx, 0, duration / 2);
+    assert(r == 0);
+
+    fake_eos = ftell(fp);
+    seek_fail_count = 1;
+    last_pkt = NULL;
+    r = nestegg_read_last_packet(ctx, 0, &last_pkt);
+    assert(r == -1);
+    assert(last_pkt == NULL);
+
+    fake_eos = -1;
+    seek_fail_count = 0;
+    r = nestegg_track_seek(ctx, 0, duration / 2);
+    assert(r == 0);
+    pkt = NULL;
+    r = nestegg_read_packet(ctx, &pkt);
+    assert(r == 1);
+    assert(pkt != NULL);
+    nestegg_free_packet(pkt);
+
+    r = nestegg_track_seek(ctx, 0, duration / 2);
+    assert(r == 0);
+
+    fake_eos = ftell(fp);
+    seek_fail_count = 1;
+    total_frames = 0;
+    r = nestegg_read_total_frames_count(ctx, &total_frames);
+    assert(r == -1);
+
+    fake_eos = -1;
+    seek_fail_count = 0;
+    r = nestegg_track_seek(ctx, 0, duration / 2);
+    assert(r == 0);
+    pkt = NULL;
+    r = nestegg_read_packet(ctx, &pkt);
+    assert(r == 1);
+    assert(pkt != NULL);
+    nestegg_free_packet(pkt);
+  }
+
+  nestegg_destroy(ctx);
+  fclose(fp);
+
+  fake_eos = saved_fake_eos;
+  seek_fail_count = saved_seek_fail_count;
+}
+
 int
 main(int argc, char * argv[])
 {
-  int limit, resume, fuzz;
+  int resume = 0, fuzz = 0, seek_fail_regress = 0;
+  int64_t read_limit = -1;
+  int i;
 
-  if (argc != 2 && argc != 3)
+  if (argc < 2)
     return EXIT_FAILURE;
 
-  limit = argc == 3 && argv[2][0] == '-' && argv[2][1] == 'l';
-  resume = argc == 3 && argv[2][0] == '-' && argv[2][1] == 'r';
-  fuzz = argc == 3 && argv[2][0] == '-' && argv[2][1] == 'z';
+  for (i = 2; i < argc; i++) {
+    if (argv[i][0] != '-')
+      return EXIT_FAILURE;
+    switch (argv[i][1]) {
+    case 'l':
+      /* -l: use file size as max_offset. */
+      read_limit = 0; /* sentinel; resolved after fopen. */
+      break;
+    case 'o':
+      /* -o <N>: explicit max_offset. */
+      if (++i >= argc)
+        return EXIT_FAILURE;
+      read_limit = strtol(argv[i], NULL, 10);
+      break;
+    case 'r':
+      resume = 1;
+      break;
+    case 'z':
+      fuzz = 1;
+      break;
+    case 's':
+      read_max = 16;
+      break;
+    case 'R':
+      seek_fail_regress = 1;
+      break;
+    default:
+      return EXIT_FAILURE;
+    }
+  }
 
-  return test(argv[1], limit, resume, fuzz);
+  if (seek_fail_regress)
+    test_read_reset_seek_failure(argv[1], read_limit);
+
+  return test(argv[1], read_limit, resume, fuzz);
 }

@@ -1,52 +1,57 @@
 #!/bin/bash
 set -e
 
+# Make sanitizer findings fatal when running under ASan/UBSan.
+export UBSAN_OPTIONS="${UBSAN_OPTIONS:+$UBSAN_OPTIONS:}halt_on_error=1"
+export ASAN_OPTIONS="${ASAN_OPTIONS:+$ASAN_OPTIONS:}halt_on_error=1"
+
 function do_test {
   OUT=`mktemp`
-  test/regress "${srcdir}/test/media/$1" $2 > $OUT
+  test/regress "${srcdir}/test/media/$1" $2 $3 > $OUT
   diff --unified --strip-trailing-cr "${srcdir}/test/media/$1.ok" $OUT
   rm $OUT
 }
 
-# Test parsing.
-# New additions to media/ should be included here and in the -r section.
-do_test seek.webm
-do_test bug603918.webm
-do_test detodos.webm
-do_test split.webm
-do_test demo_short.webm
-do_test seek_sub.webm
-do_test dancer1.webm
-do_test dancer1rb.webm
-do_test seek_encrypted.webm
-do_test subsample_encrypted.webm
-do_test bug1480003.webm
-do_test bug1539686.webm
-do_test bug1592193.webm
-do_test issue76.webm
-do_test bug2020502.webm
-do_test projection.webm
-do_test hdr10.webm
+MEDIA="
+  seek.webm
+  bug603918.webm
+  detodos.webm
+  split.webm
+  demo_short.webm
+  seek_sub.webm
+  dancer1.webm
+  dancer1rb.webm
+  seek_encrypted.webm
+  subsample_encrypted.webm
+  bug1480003.webm
+  bug1539686.webm
+  bug1592193.webm
+  issue76.webm
+  bug2020502.webm
+  projection.webm
+  hdr10.webm
+"
 
-# Test resumable parsing by forcing fake EOFs every byte.
-do_test seek.webm -r
-do_test bug603918.webm -r
-do_test detodos.webm -r
-do_test split.webm -r
-do_test demo_short.webm -r
-do_test seek_sub.webm -r
-do_test dancer1.webm -r
-do_test dancer1rb.webm -r
-do_test seek_encrypted.webm -r
-do_test subsample_encrypted.webm -r
-do_test bug1480003.webm -r
-do_test bug1539686.webm -r
-do_test bug1592193.webm -r
-do_test issue76.webm -r
-do_test bug2020502.webm -r
-do_test projection.webm -r
-do_test hdr10.webm -r
+# Test normal and short-read callback behavior.
+for io_flag in "" "-s"; do
+  # Test parsing.
+  for f in $MEDIA; do
+    do_test $f $io_flag
+  done
 
-# Pass file size to nestegg_init as max_offset.
-# This is a hack to test with a specific truncated file.
-do_test bug1200148.webm -l
+  # Test resumable parsing by forcing fake EOFs every byte.
+  for f in $MEDIA; do
+    do_test $f -r $io_flag
+  done
+
+  # Pass file size to nestegg_init as max_offset.
+  # This is a hack to test with a specific truncated file.
+  do_test bug1200148.webm -l $io_flag
+
+  # Verify that a small max_offset only limits init parsing, not
+  # subsequent I/O.  Output should match the full-parse .ok file.
+  do_test seek.webm -o 512 $io_flag
+
+  # Verify that read_reset can recover after an intermediate seek failure.
+  do_test seek.webm -R $io_flag
+done
