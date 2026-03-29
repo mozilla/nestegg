@@ -480,6 +480,7 @@ struct nestegg_packet {
   int64_t reference_block;
   int read_reference_block;
   uint8_t keyframe;
+  int64_t end_offset;
 };
 
 /* Element Descriptor */
@@ -3095,6 +3096,12 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
       r = ne_read_block(ctx, id, size, pkt);
       if (r != 1)
         return r;
+      (*pkt)->end_offset = ne_io_tell(&ctx->io);
+      if ((*pkt)->end_offset < 0) {
+        nestegg_free_packet(*pkt);
+        *pkt = NULL;
+        return -1;
+      }
 
       read_block = 1;
       break;
@@ -3246,6 +3253,13 @@ nestegg_read_packet(nestegg * ctx, nestegg_packet ** pkt)
 
       assert(read_block == (*pkt != NULL));
       if (*pkt) {
+        (*pkt)->end_offset = ne_io_tell(&ctx->io);
+        if ((*pkt)->end_offset < 0) {
+          ne_free_block_additions(block_additional);
+          nestegg_free_packet(*pkt);
+          *pkt = NULL;
+          return -1;
+        }
         (*pkt)->duration = block_duration;
         (*pkt)->read_duration = read_block_duration;
         (*pkt)->discard_padding = discard_padding;
@@ -3405,6 +3419,13 @@ nestegg_packet_reference_block(nestegg_packet * pkt, int64_t * reference_block)
   if (!pkt->read_reference_block)
     return -1;
   *reference_block = pkt->reference_block;
+  return 0;
+}
+
+int
+nestegg_packet_end_offset(nestegg_packet * pkt, int64_t * end_offset)
+{
+  *end_offset = pkt->end_offset;
   return 0;
 }
 
