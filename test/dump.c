@@ -14,16 +14,16 @@
 #undef DEBUG
 #define SEEK_TEST
 
-static int
+static int64_t
 stdio_read(void * p, size_t length, void * file)
 {
   size_t r;
   FILE * fp = file;
 
-  r = fread(p, length, 1, fp);
+  r = fread(p, 1, length, fp);
   if (r == 0 && feof(fp))
     return 0;
-  return r == 0 ? -1 : 1;
+  return r == 0 ? -1 : r;
 }
 
 static int

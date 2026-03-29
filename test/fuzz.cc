@@ -28,9 +28,10 @@ struct io_buffer {
   unsigned char const * buffer;
   size_t length;
   int64_t offset;
+  size_t read_max;
 };
 
-static int
+static int64_t
 ne_buffer_read(void * buffer, size_t length, void * userdata)
 {
   struct io_buffer * iob = reinterpret_cast<struct io_buffer *>(userdata);
@@ -39,13 +40,16 @@ ne_buffer_read(void * buffer, size_t length, void * userdata)
   if (available == 0)
     return 0;
 
+  if (iob->read_max > 0 && length > iob->read_max)
+    length = iob->read_max;
+
   if (available < length)
-    return -1;
+    length = available;
 
   memcpy(buffer, iob->buffer + iob->offset, length);
   iob->offset += length;
 
-  return 1;
+  return length;
 }
 
 static int
@@ -80,8 +84,8 @@ ne_buffer_tell(void * userdata)
   return iob->offset;
 }
 
-
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+static void
+fuzz_one_input(const uint8_t * data, size_t size, size_t read_max)
 {
   int r, type, id, track_encoding, pkt_keyframe, pkt_encryption, cues;
   int64_t read_limit = -1;
@@ -91,7 +95,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   nestegg_video_params vparams;
   size_t length;
   uint64_t duration = ~0, pkt_tstamp, pkt_duration, tstamp_scale, default_duration;
-  int64_t pkt_discard_padding, pkt_reference_block;
+  int64_t pkt_discard_padding, pkt_reference_block, pkt_end_offset;
   unsigned char * codec_data, * ptr, * pkt_additional;
   unsigned char const * track_content_enc_key_id, * pkt_encryption_iv;
   unsigned int i, j, tracks = 0, pkt_cnt, pkt_track;
@@ -99,11 +103,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   uint8_t pkt_num_offsets;
   uint32_t const * pkt_partition_offsets;
 
-  nestegg_io io;
+  nestegg_io io = {};
   struct io_buffer userdata;
   userdata.buffer = data;
   userdata.length = size;
   userdata.offset = 0;
+  userdata.read_max = read_max;
 
   io.read = ne_buffer_read;
   io.seek = ne_buffer_seek;
@@ -113,7 +118,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   ctx = NULL;
   r = nestegg_init(&ctx, io, NULL, read_limit);
   if (r != 0)
-    return 0;
+    return;
 
   nestegg_track_count(ctx, &tracks);
   nestegg_duration(ctx, &duration);
@@ -139,8 +144,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     case NESTEGG_TRACK_AUDIO:
       nestegg_track_audio_params(ctx, i, &aparams);
       break;
-    //case NESTEGG_TRACK_UNKNOWN:
-    //  break;
     default:
       break;
     }
@@ -163,6 +166,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     nestegg_packet_discard_padding(pkt, &pkt_discard_padding);
     pkt_reference_block = 0;
     nestegg_packet_reference_block(pkt, &pkt_reference_block);
+    pkt_end_offset = 0;
+    nestegg_packet_end_offset(pkt, &pkt_end_offset);
     pkt_additional = NULL;
     nestegg_packet_additional_data(pkt, 1, &pkt_additional, &length);
     pkt_encryption = nestegg_packet_encryption(pkt);
@@ -180,5 +185,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
   }
 
   nestegg_destroy(ctx);
+}
+
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+{
+  fuzz_one_input(data, size, 0);
+  fuzz_one_input(data, size, 16);
   return 0;
 }

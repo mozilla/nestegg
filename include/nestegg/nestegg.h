@@ -116,16 +116,20 @@ extern "C" {
 typedef struct nestegg nestegg;               /**< Opaque handle referencing the stream state. */
 typedef struct nestegg_packet nestegg_packet; /**< Opaque handle referencing a packet of data. */
 
-/** User supplied IO context. */
+/** User supplied IO context.
+    Callers must supply #read, #seek, and #tell.
+    Reads are served through an internal buffer, reducing callback
+    overhead.  #read permits short reads, returning the number of bytes
+    actually read. */
 typedef struct {
-  /** User supplied read callback.
+  /** User supplied read callback.  Short reads are permitted.
       @param buffer   Buffer to read data into.
-      @param length   Length of supplied buffer in bytes.
+      @param length   Maximum number of bytes to read.
       @param userdata The #userdata supplied by the user.
-      @retval  1 Read succeeded.
+      @returns Number of bytes read.
       @retval  0 End of stream.
       @retval -1 Error. */
-  int (* read)(void * buffer, size_t length, void * userdata);
+  int64_t (* read)(void * buffer, size_t length, void * userdata);
 
   /** User supplied seek callback.
       @param offset   Offset within the stream to seek to.
