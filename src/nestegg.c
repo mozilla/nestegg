@@ -1553,7 +1553,6 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
   nestegg_packet * pkt;
   struct frame * f, * last;
   struct track_entry * entry;
-  double track_scale;
   uint64_t track_number, length, frame_sizes[256], cluster_tc, flags, frames, tc_scale, total,
            encoding_type, encryption_algo, encryption_mode;
   unsigned int i, lacing, track;
@@ -1672,8 +1671,6 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
     return -1;
   }
 
-  track_scale = 1.0;
-
   tc_scale = ne_get_timecode_scale(ctx);
   if (tc_scale == 0)
     return -1;
@@ -1693,7 +1690,7 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
   if (!pkt)
     return -1;
   pkt->track = track;
-  pkt->timecode = ne_saturate_mul_uint64((uint64_t) abs_timecode, tc_scale) * track_scale;
+  pkt->timecode = ne_saturate_mul_uint64((uint64_t) abs_timecode, tc_scale);
   pkt->keyframe = keyframe;
 
   ctx->log(ctx, NESTEGG_LOG_DEBUG, "%sblock t %lld pts %f f %llx frames: %llu",
