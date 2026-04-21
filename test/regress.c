@@ -212,6 +212,9 @@ test(char const * path, int limit, int resume, int fuzz)
                  vparams.luminance_max,
                  vparams.luminance_min);
         }
+        if (vparams.max_cll != 0 || vparams.max_fall != 0) {
+          printf(" %u %u", vparams.max_cll, vparams.max_fall);
+        }
         printf("\n");
       }
       break;

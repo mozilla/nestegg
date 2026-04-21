@@ -123,6 +123,8 @@
 #define ID_RANGE                    0x55b9
 #define ID_TRANSFER_CHARACTERISTICS 0x55ba
 #define ID_PRIMARIES                0x55bb
+#define ID_MAX_CLL                  0x55bc
+#define ID_MAX_FALL                 0x55bd
 #define ID_MASTERING_METADATA       0x55d0
 
 /* MasteringMetadata Elements */
@@ -300,6 +302,8 @@ struct colour {
   struct ebml_type range;
   struct ebml_type transfer_characteristics;
   struct ebml_type primaries;
+  struct ebml_type max_cll;
+  struct ebml_type max_fall;
   struct mastering_metadata mastering_metadata;
 };
 
@@ -549,6 +553,8 @@ static struct ebml_element_desc ne_colour_elements[] = {
   E_FIELD(ID_RANGE, TYPE_UINT, struct colour, range),
   E_FIELD(ID_TRANSFER_CHARACTERISTICS, TYPE_UINT, struct colour, transfer_characteristics),
   E_FIELD(ID_PRIMARIES, TYPE_UINT, struct colour, primaries),
+  E_FIELD(ID_MAX_CLL, TYPE_UINT, struct colour, max_cll),
+  E_FIELD(ID_MAX_FALL, TYPE_UINT, struct colour, max_fall),
   E_SINGLE_MASTER(ID_MASTERING_METADATA, TYPE_MASTER, struct colour, mastering_metadata),
   E_LAST
 };
@@ -2773,6 +2779,14 @@ nestegg_track_video_params(nestegg * ctx, unsigned int track,
   value = 2;
   ne_get_uint(entry->video.colour.primaries, &value);
   params->primaries = value;
+
+  value = 0;
+  ne_get_uint(entry->video.colour.max_cll, &value);
+  params->max_cll = value;
+
+  value = 0;
+  ne_get_uint(entry->video.colour.max_fall, &value);
+  params->max_fall = value;
 
   value = 0;
   ne_get_uint(entry->video.projection.type, &value);
