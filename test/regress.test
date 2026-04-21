@@ -26,6 +26,7 @@ do_test bug1592193.webm
 do_test issue76.webm
 do_test bug2020502.webm
 do_test projection.webm
+do_test hdr10.webm
 
 # Test resumable parsing by forcing fake EOFs every byte.
 do_test seek.webm -r
@@ -44,6 +45,7 @@ do_test bug1592193.webm -r
 do_test issue76.webm -r
 do_test bug2020502.webm -r
 do_test projection.webm -r
+do_test hdr10.webm -r
 
 # Pass file size to nestegg_init as max_offset.
 # This is a hack to test with a specific truncated file.

@@ -185,6 +185,10 @@ typedef struct {
                                               NaN means element not present. */
   double luminance_min;                  /**< Minimum luminance in cd/m2.
                                               NaN means element not present. */
+  unsigned int max_cll;                  /**< Maximum Content Light Level in cd/m2.
+                                              0 means element not present. */
+  unsigned int max_fall;                 /**< Maximum Frame-Average Light Level in cd/m2.
+                                              0 means element not present. */
   unsigned int projection_type;          /**< Projection type.  One of #NESTEGG_VIDEO_PROJECTION_RECTANGULAR,
                                               #NESTEGG_VIDEO_PROJECTION_EQUIRECTANGULAR,
                                               #NESTEGG_VIDEO_PROJECTION_CUBEMAP, or
