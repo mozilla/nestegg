@@ -1026,13 +1026,11 @@ ne_read_uint(ne_io * io, uint64_t * val, uint64_t length)
   unsigned char b;
   int r;
 
-  if (length == 0 || length > 8)
+  if (length > 8)
     return -1;
-  r = ne_io_read(io, &b, 1);
-  if (r != 1)
-    return r;
-  *val = b;
-  while (--length) {
+
+  *val = 0;
+  while (length--) {
     r = ne_io_read(io, &b, 1);
     if (r != 1)
       return r;
@@ -1087,13 +1085,14 @@ ne_read_float(ne_io * io, double * val, uint64_t length)
   } value;
   int r;
 
-  /* Length == 10 not implemented. */
-  if (length != 4 && length != 8)
+  if (length != 0 && length != 4 && length != 8)
     return -1;
   r = ne_read_uint(io, &value.u, length);
   if (r != 1)
     return r;
-  if (length == 4)
+  if (length == 0)
+    *val = 0.;
+  else if (length == 4)
     *val = value.f.f;
   else
     *val = value.d;

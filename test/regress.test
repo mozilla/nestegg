@@ -30,6 +30,7 @@ MEDIA="
   bug2020502.webm
   projection.webm
   hdr10.webm
+  bug2045549.webm
 "
 
 # Test normal and short-read callback behavior.
