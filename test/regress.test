@@ -31,6 +31,7 @@ MEDIA="
   projection.webm
   hdr10.webm
   bug2045549.webm
+  zerolen_default.webm
 "
 
 # Test normal and short-read callback behavior.
