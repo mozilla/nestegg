@@ -1763,9 +1763,10 @@ ne_saturate_mul_uint64(uint64_t a, uint64_t b)
 static uint64_t
 ne_get_timecode_scale(nestegg * ctx)
 {
-  uint64_t scale = 0;
+  uint64_t scale;
 
-  ne_get_uint(ctx->segment.info.timecode_scale, &scale);
+  if (ne_get_uint(ctx->segment.info.timecode_scale, &scale) != 0)
+    return 0;
 
   return scale;
 }
@@ -3113,15 +3114,13 @@ nestegg_track_video_params(nestegg * ctx, unsigned int track,
   if (nestegg_track_type(ctx, track) != NESTEGG_TRACK_VIDEO)
     return -1;
 
-  value = 0;
-  ne_get_uint(entry->video.stereo_mode, &value);
-  if (value <= NESTEGG_VIDEO_STEREO_TOP_BOTTOM ||
-      value == NESTEGG_VIDEO_STEREO_RIGHT_LEFT)
+  if (ne_get_uint(entry->video.stereo_mode, &value) == 0 &&
+      (value <= NESTEGG_VIDEO_STEREO_TOP_BOTTOM ||
+       value == NESTEGG_VIDEO_STEREO_RIGHT_LEFT))
     params->stereo_mode = value;
 
-  value = 0;
-  ne_get_uint(entry->video.alpha_mode, &value);
-  params->alpha_mode = value;
+  if (ne_get_uint(entry->video.alpha_mode, &value) == 0)
+    params->alpha_mode = value;
 
   if (ne_get_uint(entry->video.pixel_width, &value) != 0)
     return -1;
@@ -3131,21 +3130,17 @@ nestegg_track_video_params(nestegg * ctx, unsigned int track,
     return -1;
   params->height = value;
 
-  value = 0;
-  ne_get_uint(entry->video.pixel_crop_bottom, &value);
-  params->crop_bottom = value;
+  if (ne_get_uint(entry->video.pixel_crop_bottom, &value) == 0)
+    params->crop_bottom = value;
 
-  value = 0;
-  ne_get_uint(entry->video.pixel_crop_top, &value);
-  params->crop_top = value;
+  if (ne_get_uint(entry->video.pixel_crop_top, &value) == 0)
+    params->crop_top = value;
 
-  value = 0;
-  ne_get_uint(entry->video.pixel_crop_left, &value);
-  params->crop_left = value;
+  if (ne_get_uint(entry->video.pixel_crop_left, &value) == 0)
+    params->crop_left = value;
 
-  value = 0;
-  ne_get_uint(entry->video.pixel_crop_right, &value);
-  params->crop_right = value;
+  if (ne_get_uint(entry->video.pixel_crop_right, &value) == 0)
+    params->crop_right = value;
 
   /* DisplayWidth and DisplayHeight default to PixelWidth and PixelHeight;
      dynamic defaults are not representable in the element descriptors, so
@@ -3158,21 +3153,17 @@ nestegg_track_video_params(nestegg * ctx, unsigned int track,
   ne_get_uint(entry->video.display_height, &value);
   params->display_height = value;
 
-  value = 0;
-  ne_get_uint(entry->video.colour.matrix_coefficients, &value);
-  params->matrix_coefficients = value;
+  if (ne_get_uint(entry->video.colour.matrix_coefficients, &value) == 0)
+    params->matrix_coefficients = value;
 
-  value = 0;
-  ne_get_uint(entry->video.colour.range, &value);
-  params->range = value;
+  if (ne_get_uint(entry->video.colour.range, &value) == 0)
+    params->range = value;
 
-  value = 0;
-  ne_get_uint(entry->video.colour.transfer_characteristics, &value);
-  params->transfer_characteristics = value;
+  if (ne_get_uint(entry->video.colour.transfer_characteristics, &value) == 0)
+    params->transfer_characteristics = value;
 
-  value = 0;
-  ne_get_uint(entry->video.colour.primaries, &value);
-  params->primaries = value;
+  if (ne_get_uint(entry->video.colour.primaries, &value) == 0)
+    params->primaries = value;
 
   value = 0;
   ne_get_uint(entry->video.colour.max_cll, &value);
@@ -3182,21 +3173,17 @@ nestegg_track_video_params(nestegg * ctx, unsigned int track,
   ne_get_uint(entry->video.colour.max_fall, &value);
   params->max_fall = value;
 
-  value = 0;
-  ne_get_uint(entry->video.projection.type, &value);
-  params->projection_type = value;
+  if (ne_get_uint(entry->video.projection.type, &value) == 0)
+    params->projection_type = value;
 
-  fvalue = 0;
-  ne_get_float(entry->video.projection.pose_yaw, &fvalue);
-  params->projection_pose_yaw = fvalue;
+  if (ne_get_float(entry->video.projection.pose_yaw, &fvalue) == 0)
+    params->projection_pose_yaw = fvalue;
 
-  fvalue = 0;
-  ne_get_float(entry->video.projection.pose_pitch, &fvalue);
-  params->projection_pose_pitch = fvalue;
+  if (ne_get_float(entry->video.projection.pose_pitch, &fvalue) == 0)
+    params->projection_pose_pitch = fvalue;
 
-  fvalue = 0;
-  ne_get_float(entry->video.projection.pose_roll, &fvalue);
-  params->projection_pose_roll = fvalue;
+  if (ne_get_float(entry->video.projection.pose_roll, &fvalue) == 0)
+    params->projection_pose_roll = fvalue;
 
   fvalue = strtod("NaN", NULL);
   ne_get_float(entry->video.colour.mastering_metadata.primary_r_chromacity_x, &fvalue);
@@ -3259,22 +3246,19 @@ nestegg_track_audio_params(nestegg * ctx, unsigned int track,
 
   ne_get_float(entry->audio.sampling_frequency, &params->rate);
 
-  value = 0;
-  ne_get_uint(entry->audio.channels, &value);
-  params->channels = value;
+  if (ne_get_uint(entry->audio.channels, &value) == 0)
+    params->channels = value;
 
   /* BitDepth has no declared default; 16 is nestegg API policy. */
   value = 16;
   ne_get_uint(entry->audio.bit_depth, &value);
   params->depth = value;
 
-  value = 0;
-  ne_get_uint(entry->codec_delay, &value);
-  params->codec_delay = value;
+  if (ne_get_uint(entry->codec_delay, &value) == 0)
+    params->codec_delay = value;
 
-  value = 0;
-  ne_get_uint(entry->seek_preroll, &value);
-  params->seek_preroll = value;
+  if (ne_get_uint(entry->seek_preroll, &value) == 0)
+    params->seek_preroll = value;
 
   return 0;
 }
