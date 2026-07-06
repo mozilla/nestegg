@@ -1447,10 +1447,19 @@ ne_read_simple(nestegg * ctx, struct ebml_element_desc * desc, size_t length)
 
   switch (desc->type) {
   case TYPE_UINT:
-    r = ne_read_uint(&ctx->io, &storage->v.u, length);
+    /* A zero-length element keeps the value established at init: the
+       declared default (RFC 8794 section 6.1) or, for a field with no
+       default, zero (RFC 8794 section 7.x). */
+    if (length == 0)
+      r = 1;
+    else
+      r = ne_read_uint(&ctx->io, &storage->v.u, length);
     break;
   case TYPE_FLOAT:
-    r = ne_read_float(&ctx->io, &storage->v.f, length);
+    if (length == 0)
+      r = 1;
+    else
+      r = ne_read_float(&ctx->io, &storage->v.f, length);
     break;
   case TYPE_STRING:
     r = ne_read_string(ctx, &storage->v.s, length);
