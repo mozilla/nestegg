@@ -160,6 +160,12 @@ enum ebml_type_enum {
   TYPE_BINARY
 };
 
+enum ebml_read_state {
+  EBML_UNREAD = 0,
+  EBML_READ_VALUE,
+  EBML_READ_DEFAULT
+};
+
 #define LIMIT_STRING                (1 << 20)
 #define LIMIT_BINARY                (1 << 24)
 #define LIMIT_BLOCK                 (1 << 30)
@@ -172,6 +178,7 @@ enum ebml_type_enum {
 #define DESC_FLAG_MULTI             (1 << 0)
 #define DESC_FLAG_SUSPEND           (1 << 1)
 #define DESC_FLAG_OFFSET            (1 << 2)
+#define DESC_FLAG_HAS_DEFAULT       (1 << 3)
 
 /* Block Header Flags */
 #define SIMPLE_BLOCK_FLAGS_KEYFRAME (1 << 7)
@@ -255,7 +262,7 @@ struct ebml_type {
     struct ebml_binary b;
   } v;
   enum ebml_type_enum type;
-  int read;
+  enum ebml_read_state read;
 };
 
 /* EBML Definitions */
@@ -508,32 +515,41 @@ struct ebml_element_desc {
   struct ebml_element_desc * children;
   size_t size;
   size_t data_offset;
+  /* Schema-declared default value, valid if DESC_FLAG_HAS_DEFAULT is set.
+     Stored as two scalars rather than a union to allow static
+     initialization in C89. */
+  uint64_t default_uint;
+  double default_float;
 };
 
 #define E_FIELD(ID, TYPE, STRUCT, FIELD) \
-  { #ID, ID, TYPE, offsetof(STRUCT, FIELD), DESC_FLAG_NONE, NULL, 0, 0 }
+  { #ID, ID, TYPE, offsetof(STRUCT, FIELD), DESC_FLAG_NONE, NULL, 0, 0, 0, 0.0 }
+#define E_FIELD_DEFAULT_UINT(ID, STRUCT, FIELD, DEFAULT) \
+  { #ID, ID, TYPE_UINT, offsetof(STRUCT, FIELD), DESC_FLAG_HAS_DEFAULT, NULL, 0, 0, DEFAULT, 0.0 }
+#define E_FIELD_DEFAULT_FLOAT(ID, STRUCT, FIELD, DEFAULT) \
+  { #ID, ID, TYPE_FLOAT, offsetof(STRUCT, FIELD), DESC_FLAG_HAS_DEFAULT, NULL, 0, 0, 0, DEFAULT }
 #define E_MASTER(ID, TYPE, STRUCT, FIELD) \
   { #ID, ID, TYPE, offsetof(STRUCT, FIELD), DESC_FLAG_MULTI, ne_ ## FIELD ## _elements, \
-      sizeof(struct FIELD), 0 }
+      sizeof(struct FIELD), 0, 0, 0.0 }
 #define E_SINGLE_MASTER_O(ID, TYPE, STRUCT, FIELD) \
   { #ID, ID, TYPE, offsetof(STRUCT, FIELD), DESC_FLAG_OFFSET, ne_ ## FIELD ## _elements, 0, \
-      offsetof(STRUCT, FIELD ## _offset) }
+      offsetof(STRUCT, FIELD ## _offset), 0, 0.0 }
 #define E_SINGLE_MASTER(ID, TYPE, STRUCT, FIELD) \
-  { #ID, ID, TYPE, offsetof(STRUCT, FIELD), DESC_FLAG_NONE, ne_ ## FIELD ## _elements, 0, 0 }
+  { #ID, ID, TYPE, offsetof(STRUCT, FIELD), DESC_FLAG_NONE, ne_ ## FIELD ## _elements, 0, 0, 0, 0.0 }
 #define E_SUSPEND(ID, TYPE) \
-  { #ID, ID, TYPE, 0, DESC_FLAG_SUSPEND, NULL, 0, 0 }
+  { #ID, ID, TYPE, 0, DESC_FLAG_SUSPEND, NULL, 0, 0, 0, 0.0 }
 #define E_LAST \
-  { NULL, 0, 0, 0, DESC_FLAG_NONE, NULL, 0, 0 }
+  { NULL, 0, 0, 0, DESC_FLAG_NONE, NULL, 0, 0, 0, 0.0 }
 
 /* EBML Element Lists */
 static struct ebml_element_desc ne_ebml_elements[] = {
-  E_FIELD(ID_EBML_VERSION, TYPE_UINT, struct ebml, ebml_version),
-  E_FIELD(ID_EBML_READ_VERSION, TYPE_UINT, struct ebml, ebml_read_version),
-  E_FIELD(ID_EBML_MAX_ID_LENGTH, TYPE_UINT, struct ebml, ebml_max_id_length),
-  E_FIELD(ID_EBML_MAX_SIZE_LENGTH, TYPE_UINT, struct ebml, ebml_max_size_length),
+  E_FIELD_DEFAULT_UINT(ID_EBML_VERSION, struct ebml, ebml_version, 1),
+  E_FIELD_DEFAULT_UINT(ID_EBML_READ_VERSION, struct ebml, ebml_read_version, 1),
+  E_FIELD_DEFAULT_UINT(ID_EBML_MAX_ID_LENGTH, struct ebml, ebml_max_id_length, 4),
+  E_FIELD_DEFAULT_UINT(ID_EBML_MAX_SIZE_LENGTH, struct ebml, ebml_max_size_length, 8),
   E_FIELD(ID_DOCTYPE, TYPE_STRING, struct ebml, doctype),
-  E_FIELD(ID_DOCTYPE_VERSION, TYPE_UINT, struct ebml, doctype_version),
-  E_FIELD(ID_DOCTYPE_READ_VERSION, TYPE_UINT, struct ebml, doctype_read_version),
+  E_FIELD_DEFAULT_UINT(ID_DOCTYPE_VERSION, struct ebml, doctype_version, 1),
+  E_FIELD_DEFAULT_UINT(ID_DOCTYPE_READ_VERSION, struct ebml, doctype_read_version, 1),
   E_LAST
 };
 
@@ -550,7 +566,7 @@ static struct ebml_element_desc ne_seek_head_elements[] = {
 };
 
 static struct ebml_element_desc ne_info_elements[] = {
-  E_FIELD(ID_TIMECODE_SCALE, TYPE_UINT, struct info, timecode_scale),
+  E_FIELD_DEFAULT_UINT(ID_TIMECODE_SCALE, struct info, timecode_scale, 1000000),
   E_FIELD(ID_DURATION, TYPE_FLOAT, struct info, duration),
   E_LAST
 };
@@ -570,10 +586,10 @@ static struct ebml_element_desc ne_mastering_metadata_elements[] = {
 };
 
 static struct ebml_element_desc ne_colour_elements[] = {
-  E_FIELD(ID_MATRIX_COEFFICIENTS, TYPE_UINT, struct colour, matrix_coefficients),
-  E_FIELD(ID_RANGE, TYPE_UINT, struct colour, range),
-  E_FIELD(ID_TRANSFER_CHARACTERISTICS, TYPE_UINT, struct colour, transfer_characteristics),
-  E_FIELD(ID_PRIMARIES, TYPE_UINT, struct colour, primaries),
+  E_FIELD_DEFAULT_UINT(ID_MATRIX_COEFFICIENTS, struct colour, matrix_coefficients, 2),
+  E_FIELD_DEFAULT_UINT(ID_RANGE, struct colour, range, 0),
+  E_FIELD_DEFAULT_UINT(ID_TRANSFER_CHARACTERISTICS, struct colour, transfer_characteristics, 2),
+  E_FIELD_DEFAULT_UINT(ID_PRIMARIES, struct colour, primaries, 2),
   E_FIELD(ID_MAX_CLL, TYPE_UINT, struct colour, max_cll),
   E_FIELD(ID_MAX_FALL, TYPE_UINT, struct colour, max_fall),
   E_SINGLE_MASTER(ID_MASTERING_METADATA, TYPE_MASTER, struct colour, mastering_metadata),
@@ -581,22 +597,22 @@ static struct ebml_element_desc ne_colour_elements[] = {
 };
 
 static struct ebml_element_desc ne_projection_elements[] = {
-  E_FIELD(ID_PROJECTION_TYPE, TYPE_UINT, struct projection, type),
-  E_FIELD(ID_PROJECTION_POSE_YAW, TYPE_FLOAT, struct projection, pose_yaw),
-  E_FIELD(ID_PROJECTION_POSE_PITCH, TYPE_FLOAT, struct projection, pose_pitch),
-  E_FIELD(ID_PROJECTION_POSE_ROLL, TYPE_FLOAT, struct projection, pose_roll),
+  E_FIELD_DEFAULT_UINT(ID_PROJECTION_TYPE, struct projection, type, 0),
+  E_FIELD_DEFAULT_FLOAT(ID_PROJECTION_POSE_YAW, struct projection, pose_yaw, 0.0),
+  E_FIELD_DEFAULT_FLOAT(ID_PROJECTION_POSE_PITCH, struct projection, pose_pitch, 0.0),
+  E_FIELD_DEFAULT_FLOAT(ID_PROJECTION_POSE_ROLL, struct projection, pose_roll, 0.0),
   E_LAST
 };
 
 static struct ebml_element_desc ne_video_elements[] = {
-  E_FIELD(ID_STEREO_MODE, TYPE_UINT, struct video, stereo_mode),
-  E_FIELD(ID_ALPHA_MODE, TYPE_UINT, struct video, alpha_mode),
+  E_FIELD_DEFAULT_UINT(ID_STEREO_MODE, struct video, stereo_mode, 0),
+  E_FIELD_DEFAULT_UINT(ID_ALPHA_MODE, struct video, alpha_mode, 0),
   E_FIELD(ID_PIXEL_WIDTH, TYPE_UINT, struct video, pixel_width),
   E_FIELD(ID_PIXEL_HEIGHT, TYPE_UINT, struct video, pixel_height),
-  E_FIELD(ID_PIXEL_CROP_BOTTOM, TYPE_UINT, struct video, pixel_crop_bottom),
-  E_FIELD(ID_PIXEL_CROP_TOP, TYPE_UINT, struct video, pixel_crop_top),
-  E_FIELD(ID_PIXEL_CROP_LEFT, TYPE_UINT, struct video, pixel_crop_left),
-  E_FIELD(ID_PIXEL_CROP_RIGHT, TYPE_UINT, struct video, pixel_crop_right),
+  E_FIELD_DEFAULT_UINT(ID_PIXEL_CROP_BOTTOM, struct video, pixel_crop_bottom, 0),
+  E_FIELD_DEFAULT_UINT(ID_PIXEL_CROP_TOP, struct video, pixel_crop_top, 0),
+  E_FIELD_DEFAULT_UINT(ID_PIXEL_CROP_LEFT, struct video, pixel_crop_left, 0),
+  E_FIELD_DEFAULT_UINT(ID_PIXEL_CROP_RIGHT, struct video, pixel_crop_right, 0),
   E_FIELD(ID_DISPLAY_WIDTH, TYPE_UINT, struct video, display_width),
   E_FIELD(ID_DISPLAY_HEIGHT, TYPE_UINT, struct video, display_height),
   E_SINGLE_MASTER(ID_COLOUR, TYPE_MASTER, struct video, colour),
@@ -605,8 +621,8 @@ static struct ebml_element_desc ne_video_elements[] = {
 };
 
 static struct ebml_element_desc ne_audio_elements[] = {
-  E_FIELD(ID_SAMPLING_FREQUENCY, TYPE_FLOAT, struct audio, sampling_frequency),
-  E_FIELD(ID_CHANNELS, TYPE_UINT, struct audio, channels),
+  E_FIELD_DEFAULT_FLOAT(ID_SAMPLING_FREQUENCY, struct audio, sampling_frequency, 8000.0),
+  E_FIELD_DEFAULT_UINT(ID_CHANNELS, struct audio, channels, 1),
   E_FIELD(ID_BIT_DEPTH, TYPE_UINT, struct audio, bit_depth),
   E_LAST
 };
@@ -617,14 +633,14 @@ static struct ebml_element_desc ne_content_enc_aes_settings_elements[] = {
 };
 
 static struct ebml_element_desc ne_content_encryption_elements[] = {
-  E_FIELD(ID_CONTENT_ENC_ALGO, TYPE_UINT, struct content_encryption, content_enc_algo),
+  E_FIELD_DEFAULT_UINT(ID_CONTENT_ENC_ALGO, struct content_encryption, content_enc_algo, 0),
   E_FIELD(ID_CONTENT_ENC_KEY_ID, TYPE_BINARY, struct content_encryption, content_enc_key_id),
   E_MASTER(ID_CONTENT_ENC_AES_SETTINGS, TYPE_MASTER, struct content_encryption, content_enc_aes_settings),
   E_LAST
 };
 
 static struct ebml_element_desc ne_content_encoding_elements[] = {
-  E_FIELD(ID_CONTENT_ENCODING_TYPE, TYPE_UINT, struct content_encoding, content_encoding_type),
+  E_FIELD_DEFAULT_UINT(ID_CONTENT_ENCODING_TYPE, struct content_encoding, content_encoding_type, 0),
   E_MASTER(ID_CONTENT_ENCRYPTION, TYPE_MASTER, struct content_encoding, content_encryption),
   E_LAST
 };
@@ -638,15 +654,15 @@ static struct ebml_element_desc ne_track_entry_elements[] = {
   E_FIELD(ID_TRACK_NUMBER, TYPE_UINT, struct track_entry, number),
   E_FIELD(ID_TRACK_UID, TYPE_UINT, struct track_entry, uid),
   E_FIELD(ID_TRACK_TYPE, TYPE_UINT, struct track_entry, type),
-  E_FIELD(ID_FLAG_ENABLED, TYPE_UINT, struct track_entry, flag_enabled),
-  E_FIELD(ID_FLAG_DEFAULT, TYPE_UINT, struct track_entry, flag_default),
-  E_FIELD(ID_FLAG_LACING, TYPE_UINT, struct track_entry, flag_lacing),
-  E_FIELD(ID_TRACK_TIMECODE_SCALE, TYPE_FLOAT, struct track_entry, track_timecode_scale),
+  E_FIELD_DEFAULT_UINT(ID_FLAG_ENABLED, struct track_entry, flag_enabled, 1),
+  E_FIELD_DEFAULT_UINT(ID_FLAG_DEFAULT, struct track_entry, flag_default, 1),
+  E_FIELD_DEFAULT_UINT(ID_FLAG_LACING, struct track_entry, flag_lacing, 1),
+  E_FIELD_DEFAULT_FLOAT(ID_TRACK_TIMECODE_SCALE, struct track_entry, track_timecode_scale, 1.0),
   E_FIELD(ID_LANGUAGE, TYPE_STRING, struct track_entry, language),
   E_FIELD(ID_CODEC_ID, TYPE_STRING, struct track_entry, codec_id),
   E_FIELD(ID_CODEC_PRIVATE, TYPE_BINARY, struct track_entry, codec_private),
-  E_FIELD(ID_CODEC_DELAY, TYPE_UINT, struct track_entry, codec_delay),
-  E_FIELD(ID_SEEK_PREROLL, TYPE_UINT, struct track_entry, seek_preroll),
+  E_FIELD_DEFAULT_UINT(ID_CODEC_DELAY, struct track_entry, codec_delay, 0),
+  E_FIELD_DEFAULT_UINT(ID_SEEK_PREROLL, struct track_entry, seek_preroll, 0),
   E_FIELD(ID_DEFAULT_DURATION, TYPE_UINT, struct track_entry, default_duration),
   E_SINGLE_MASTER(ID_VIDEO, TYPE_MASTER, struct track_entry, video),
   E_SINGLE_MASTER(ID_AUDIO, TYPE_MASTER, struct track_entry, audio),
@@ -693,6 +709,8 @@ static struct ebml_element_desc ne_top_level_elements[] = {
 };
 
 #undef E_FIELD
+#undef E_FIELD_DEFAULT_UINT
+#undef E_FIELD_DEFAULT_FLOAT
 #undef E_MASTER
 #undef E_SINGLE_MASTER_O
 #undef E_SINGLE_MASTER
@@ -1149,7 +1167,7 @@ ne_read_binary(nestegg * ctx, struct ebml_binary * val, uint64_t length)
 static int
 ne_get_uint(struct ebml_type type, uint64_t * value)
 {
-  if (!type.read)
+  if (type.read == EBML_UNREAD)
     return -1;
 
   assert(type.type == TYPE_UINT);
@@ -1162,7 +1180,7 @@ ne_get_uint(struct ebml_type type, uint64_t * value)
 static int
 ne_get_float(struct ebml_type type, double * value)
 {
-  if (!type.read)
+  if (type.read == EBML_UNREAD)
     return -1;
 
   assert(type.type == TYPE_FLOAT);
@@ -1175,7 +1193,7 @@ ne_get_float(struct ebml_type type, double * value)
 static int
 ne_get_string(struct ebml_type type, char ** value)
 {
-  if (!type.read)
+  if (type.read == EBML_UNREAD)
     return -1;
 
   assert(type.type == TYPE_STRING);
@@ -1188,7 +1206,7 @@ ne_get_string(struct ebml_type type, char ** value)
 static int
 ne_get_binary(struct ebml_type type, struct ebml_binary * value)
 {
-  if (!type.read)
+  if (type.read == EBML_UNREAD)
     return -1;
 
   assert(type.type == TYPE_BINARY);
@@ -1221,6 +1239,32 @@ ne_find_element(uint64_t id, struct ebml_element_desc * elements)
       return element;
 
   return NULL;
+}
+
+/* Initialize storage for elements with schema-declared default values
+   so that absent and (eventually) zero-length elements read back as their
+   default (RFC 8794 Section 11.1.6.8).  Multi instance master elements are
+   initialized as each instance is allocated in ne_read_master. */
+static void
+ne_init_defaults(struct ebml_element_desc * elements, void * data)
+{
+  struct ebml_element_desc * element;
+  struct ebml_type * storage;
+
+  for (element = elements; element->id; ++element) {
+    if (element->type == TYPE_MASTER) {
+      if (element->children && !(element->flags & DESC_FLAG_MULTI))
+        ne_init_defaults(element->children, (char *) data + element->offset);
+    } else if (element->flags & DESC_FLAG_HAS_DEFAULT) {
+      storage = (struct ebml_type *) ((char *) data + element->offset);
+      storage->type = element->type;
+      if (element->type == TYPE_UINT)
+        storage->v.u = element->default_uint;
+      else
+        storage->v.f = element->default_float;
+      storage->read = EBML_READ_DEFAULT;
+    }
+  }
 }
 
 static int
@@ -1351,6 +1395,7 @@ ne_read_master(nestegg * ctx, struct ebml_element_desc * desc)
   node->data = ne_pool_alloc(desc->size, ctx->alloc_pool);
   if (!node->data)
     return -1;
+  ne_init_defaults(desc->children, node->data);
 
   oldtail = list->tail;
   if (oldtail)
@@ -1389,7 +1434,7 @@ ne_read_simple(nestegg * ctx, struct ebml_element_desc * desc, size_t length)
 
   storage = (struct ebml_type *) (ctx->ancestor->data + desc->offset);
 
-  if (storage->read) {
+  if (storage->read == EBML_READ_VALUE) {
     ctx->log(ctx, NESTEGG_LOG_DEBUG, "element %llx (%s) already read, skipping %u",
              desc->id, desc->name, length);
     return ne_io_read_skip(&ctx->io, length);
@@ -1421,7 +1466,7 @@ ne_read_simple(nestegg * ctx, struct ebml_element_desc * desc, size_t length)
   }
 
   if (r == 1)
-    storage->read = 1;
+    storage->read = EBML_READ_VALUE;
 
   return r;
 }
@@ -1585,8 +1630,7 @@ ne_read_block_encryption(nestegg * ctx, struct track_entry const * entry,
   *encoding_type = 0;
   if (entry->content_encodings.content_encoding.head) {
     encoding = entry->content_encodings.content_encoding.head->data;
-    if (ne_get_uint(encoding->content_encoding_type, encoding_type) != 0)
-      return -1;
+    ne_get_uint(encoding->content_encoding_type, encoding_type);
 
     if (*encoding_type == NESTEGG_ENCODING_ENCRYPTION) {
       /* Metadata states content is encrypted */
@@ -1594,10 +1638,7 @@ ne_read_block_encryption(nestegg * ctx, struct track_entry const * entry,
         return -1;
 
       encryption = encoding->content_encryption.head->data;
-      if (ne_get_uint(encryption->content_enc_algo, encryption_algo) != 0) {
-        ctx->log(ctx, NESTEGG_LOG_ERROR, "No ContentEncAlgo element found");
-        return -1;
-      }
+      ne_get_uint(encryption->content_enc_algo, encryption_algo);
 
       if (*encryption_algo != CONTENT_ENC_ALGO_AES) {
         ctx->log(ctx, NESTEGG_LOG_ERROR, "Disallowed ContentEncAlgo used");
@@ -1722,10 +1763,9 @@ ne_saturate_mul_uint64(uint64_t a, uint64_t b)
 static uint64_t
 ne_get_timecode_scale(nestegg * ctx)
 {
-  uint64_t scale;
+  uint64_t scale = 0;
 
-  if (ne_get_uint(ctx->segment.info.timecode_scale, &scale) != 0)
-    scale = 1000000;
+  ne_get_uint(ctx->segment.info.timecode_scale, &scale);
 
   return scale;
 }
@@ -2523,6 +2563,8 @@ ne_context_new(nestegg ** context, nestegg_io io, nestegg_log callback)
   if (!ctx->log)
     ctx->log = ne_null_log_callback;
 
+  ne_init_defaults(ne_top_level_elements, ctx);
+
   *context = ctx;
   return 0;
 }
@@ -2621,13 +2663,14 @@ nestegg_init(nestegg ** context, nestegg_io io, nestegg_log callback, int64_t ma
     return -1;
   }
 
-  if (ne_get_uint(ctx->ebml.ebml_read_version, &version) != 0)
-    version = 1;
-  if (version != 1) {
+  if (ne_get_uint(ctx->ebml.ebml_read_version, &version) != 0 ||
+      version != 1) {
     nestegg_destroy(ctx);
     return -1;
   }
 
+  /* DocType's declared default is "matroska"; string defaults are not
+     representable in the element descriptors, so apply it here. */
   if (ne_get_string(ctx->ebml.doctype, &doctype) != 0)
     doctype = DOCTYPE_MKV;
   if (!!strcmp(doctype, DOCTYPE_WEBM) && !!strcmp(doctype, DOCTYPE_MKV)) {
@@ -2635,9 +2678,8 @@ nestegg_init(nestegg ** context, nestegg_io io, nestegg_log callback, int64_t ma
     return -1;
   }
 
-  if (ne_get_uint(ctx->ebml.doctype_read_version, &docversion) != 0)
-    docversion = 1;
-  if (docversion < 1 || docversion > 2) {
+  if (ne_get_uint(ctx->ebml.doctype_read_version, &docversion) != 0 ||
+      docversion < 1 || docversion > 2) {
     nestegg_destroy(ctx);
     return -1;
   }
@@ -3105,6 +3147,9 @@ nestegg_track_video_params(nestegg * ctx, unsigned int track,
   ne_get_uint(entry->video.pixel_crop_right, &value);
   params->crop_right = value;
 
+  /* DisplayWidth and DisplayHeight default to PixelWidth and PixelHeight;
+     dynamic defaults are not representable in the element descriptors, so
+     apply them here. */
   value = params->width;
   ne_get_uint(entry->video.display_width, &value);
   params->display_width = value;
@@ -3113,7 +3158,7 @@ nestegg_track_video_params(nestegg * ctx, unsigned int track,
   ne_get_uint(entry->video.display_height, &value);
   params->display_height = value;
 
-  value = 2;
+  value = 0;
   ne_get_uint(entry->video.colour.matrix_coefficients, &value);
   params->matrix_coefficients = value;
 
@@ -3121,11 +3166,11 @@ nestegg_track_video_params(nestegg * ctx, unsigned int track,
   ne_get_uint(entry->video.colour.range, &value);
   params->range = value;
 
-  value = 2;
+  value = 0;
   ne_get_uint(entry->video.colour.transfer_characteristics, &value);
   params->transfer_characteristics = value;
 
-  value = 2;
+  value = 0;
   ne_get_uint(entry->video.colour.primaries, &value);
   params->primaries = value;
 
@@ -3212,13 +3257,13 @@ nestegg_track_audio_params(nestegg * ctx, unsigned int track,
   if (nestegg_track_type(ctx, track) != NESTEGG_TRACK_AUDIO)
     return -1;
 
-  params->rate = 8000;
   ne_get_float(entry->audio.sampling_frequency, &params->rate);
 
-  value = 1;
+  value = 0;
   ne_get_uint(entry->audio.channels, &value);
   params->channels = value;
 
+  /* BitDepth has no declared default; 16 is nestegg API policy. */
   value = 16;
   ne_get_uint(entry->audio.bit_depth, &value);
   params->depth = value;
