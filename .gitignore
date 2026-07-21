@@ -40,6 +40,8 @@ test-driver
 test-suite.log
 test/dump
 test/dump.exe
+test/indexing
+test/indexing.exe
 test/regress
 test/regress.exe
 test/*.log
