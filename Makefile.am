@@ -25,7 +25,7 @@ src_libnestegg_la_SOURCES = \
 
 src_libnestegg_la_LDFLAGS = -export-symbols-regex '^nestegg_' -no-undefined
 
-check_PROGRAMS = test/dump test/regress
+check_PROGRAMS = test/dump test/regress test/indexing
 
 test_dump_SOURCES = test/dump.c
 test_dump_LDADD = src/libnestegg.la
@@ -33,7 +33,10 @@ test_dump_LDADD = src/libnestegg.la
 test_regress_SOURCES = test/regress.c
 test_regress_LDADD = src/libnestegg.la
 
-TESTS = test/regress.test
+test_indexing_SOURCES = test/indexing.c
+test_indexing_LDADD = src/libnestegg.la
+
+TESTS = test/regress.test test/indexing
 
 dist-hook:
 	find $(distdir) -type d -name '.git' | xargs rm -rf
