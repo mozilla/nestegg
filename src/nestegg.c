@@ -1463,10 +1463,12 @@ ne_parse(nestegg * ctx, struct ebml_element_desc * top_level, int64_t max_offset
 
       if (element->type == TYPE_MASTER) {
         if (element->flags & DESC_FLAG_MULTI) {
-          if (ne_read_master(ctx, element) < 0)
+          r = ne_read_master(ctx, element);
+          if (r < 0)
             break;
         } else {
-          if (ne_read_single_master(ctx, element) < 0)
+          r = ne_read_single_master(ctx, element);
+          if (r < 0)
             break;
         }
         continue;
