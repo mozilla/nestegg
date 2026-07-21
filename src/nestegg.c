@@ -442,7 +442,6 @@ struct frame {
   unsigned char * data;
   size_t length;
   struct frame_encryption * frame_encryption;
-  struct frame * next;
 };
 
 struct block_additional {
@@ -488,7 +487,8 @@ struct nestegg_packet {
   uint64_t timecode;
   uint64_t duration;
   int read_duration;
-  struct frame * frame;
+  struct frame ** frames;
+  unsigned int frame_count;
   struct block_additional * block_additional;
   int64_t discard_padding;
   int read_discard_padding;
@@ -1848,7 +1848,6 @@ ne_alloc_frame(void)
   f->data = NULL;
   f->length = 0;
   f->frame_encryption = NULL;
-  f->next = NULL;
 
   return f;
 }
@@ -1889,7 +1888,7 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
   int r;
   int64_t timecode, abs_timecode;
   nestegg_packet * pkt;
-  struct frame * f, * last;
+  struct frame * f;
   struct track_entry * entry;
   uint64_t track_number, length, frame_sizes[256], cluster_tc, flags, frames, tc_scale, total,
            encoding_type, encryption_algo, encryption_mode;
@@ -2030,11 +2029,15 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
   pkt->track = track;
   pkt->timecode = ne_saturate_mul_uint64((uint64_t) abs_timecode, tc_scale);
   pkt->keyframe = keyframe;
+  pkt->frames = ne_alloc((size_t) frames * sizeof(*pkt->frames));
+  if (!pkt->frames) {
+    nestegg_free_packet(pkt);
+    return -1;
+  }
 
   ctx->log(ctx, NESTEGG_LOG_DEBUG, "%sblock t %lld pts %f f %llx frames: %llu",
            block_id == ID_BLOCK ? "" : "simple", pkt->track, pkt->timecode / 1e9, flags, frames);
 
-  last = NULL;
   for (i = 0; i < frames; ++i) {
     if (frame_sizes[i] > LIMIT_FRAME) {
       nestegg_free_packet(pkt);
@@ -2131,11 +2134,7 @@ ne_read_block(nestegg * ctx, uint64_t block_id, uint64_t block_size, nestegg_pac
       return r;
     }
 
-    if (!last)
-      pkt->frame = f;
-    else
-      last->next = f;
-    last = f;
+    pkt->frames[pkt->frame_count++] = f;
   }
 
   *data = pkt;
@@ -3682,14 +3681,11 @@ nestegg_read_last_packet(nestegg * context, unsigned int track,
 void
 nestegg_free_packet(nestegg_packet * pkt)
 {
-  struct frame * frame;
+  unsigned int i;
 
-  while (pkt->frame) {
-    frame = pkt->frame;
-    pkt->frame = frame->next;
-
-    ne_free_frame(frame);
-  }
+  for (i = 0; i < pkt->frame_count; ++i)
+    ne_free_frame(pkt->frames[i]);
+  free(pkt->frames);
 
   ne_free_block_additions(pkt->block_additional);
 
@@ -3753,15 +3749,7 @@ nestegg_packet_end_offset(nestegg_packet * pkt, int64_t * end_offset)
 int
 nestegg_packet_count(nestegg_packet * pkt, unsigned int * count)
 {
-  struct frame * f = pkt->frame;
-
-  *count = 0;
-
-  while (f) {
-    *count += 1;
-    f = f->next;
-  }
-
+  *count = pkt->frame_count;
   return 0;
 }
 
@@ -3769,23 +3757,18 @@ int
 nestegg_packet_data(nestegg_packet * pkt, unsigned int item,
                     unsigned char ** data, size_t * length)
 {
-  struct frame * f = pkt->frame;
-  unsigned int count = 0;
+  struct frame * f;
 
   *data = NULL;
   *length = 0;
 
-  while (f) {
-    if (count == item) {
-      *data = f->data;
-      *length = f->length;
-      return 0;
-    }
-    count += 1;
-    f = f->next;
-  }
+  if (item >= pkt->frame_count)
+    return -1;
 
-  return -1;
+  f = pkt->frames[item];
+  *data = f->data;
+  *length = f->length;
+  return 0;
 }
 
 int
@@ -3812,7 +3795,7 @@ nestegg_packet_additional_data(nestegg_packet * pkt, unsigned int id,
 int
 nestegg_packet_encryption(nestegg_packet * pkt)
 {
-  struct frame * f = pkt->frame;
+  struct frame * f = pkt->frames[0];
   unsigned char encrypted_bit;
   unsigned char partitioned_bit;
 
@@ -3820,7 +3803,7 @@ nestegg_packet_encryption(nestegg_packet * pkt)
     return NESTEGG_PACKET_HAS_SIGNAL_BYTE_FALSE;
 
   /* Should never have parsed blocks with both encryption and lacing */
-  assert(f->next == NULL);
+  assert(pkt->frame_count == 1);
 
   encrypted_bit = f->frame_encryption->signal_byte & ENCRYPTED_BIT_MASK;
   partitioned_bit = f->frame_encryption->signal_byte & PARTITIONED_BIT_MASK;
@@ -3837,7 +3820,7 @@ nestegg_packet_encryption(nestegg_packet * pkt)
 int
 nestegg_packet_iv(nestegg_packet * pkt, unsigned char const ** iv, size_t * length)
 {
-  struct frame * f = pkt->frame;
+  struct frame * f = pkt->frames[0];
   unsigned char encrypted_bit;
 
   *iv = NULL;
@@ -3846,7 +3829,7 @@ nestegg_packet_iv(nestegg_packet * pkt, unsigned char const ** iv, size_t * leng
     return -1;
 
   /* Should never have parsed blocks with both encryption and lacing */
-  assert(f->next == NULL);
+  assert(pkt->frame_count == 1);
 
   encrypted_bit = f->frame_encryption->signal_byte & ENCRYPTED_BIT_MASK;
 
@@ -3863,7 +3846,7 @@ nestegg_packet_offsets(nestegg_packet * pkt,
                        uint32_t const ** partition_offsets,
                        uint8_t * num_partitions)
 {
-  struct frame * f = pkt->frame;
+  struct frame * f = pkt->frames[0];
   unsigned char encrypted_bit;
   unsigned char partitioned_bit;
 
@@ -3874,7 +3857,7 @@ nestegg_packet_offsets(nestegg_packet * pkt,
     return -1;
 
   /* Should never have parsed blocks with both encryption and lacing */
-  assert(f->next == NULL);
+  assert(pkt->frame_count == 1);
 
   encrypted_bit = f->frame_encryption->signal_byte & ENCRYPTED_BIT_MASK;
   partitioned_bit = f->frame_encryption->signal_byte & PARTITIONED_BIT_MASK;
