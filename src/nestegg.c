@@ -164,6 +164,7 @@ enum ebml_type_enum {
 #define LIMIT_BINARY                (1 << 24)
 #define LIMIT_BLOCK                 (1 << 30)
 #define LIMIT_FRAME                 (1 << 28)
+#define LIMIT_TRACKS                1000U
 #define IO_BUFFER_SIZE              8192
 
 /* Field Flags */
@@ -242,6 +243,7 @@ struct ebml_list_node {
 struct ebml_list {
   struct ebml_list_node * head;
   struct ebml_list_node * tail;
+  size_t count;
 };
 
 struct ebml_type {
@@ -378,6 +380,11 @@ struct tracks {
   struct ebml_list track_entry;
 };
 
+struct track_number_index {
+  uint64_t number;
+  unsigned int index;
+};
+
 struct cue_track_positions {
   struct ebml_type track;
   struct ebml_type cluster_position;
@@ -467,6 +474,8 @@ struct nestegg {
   struct ebml ebml;
   struct segment segment;
   int64_t segment_offset;
+  struct track_entry ** track_by_index;
+  struct track_number_index * track_by_number;
   unsigned int track_count;
   /* Last read cluster. */
   uint64_t cluster_timecode;
@@ -1329,6 +1338,12 @@ ne_read_master(nestegg * ctx, struct ebml_element_desc * desc)
 
   list = (struct ebml_list *) (ctx->ancestor->data + desc->offset);
 
+  if (desc->id == ID_TRACK_ENTRY && list->count >= LIMIT_TRACKS) {
+    ctx->log(ctx, NESTEGG_LOG_ERROR,
+             "TrackEntry count exceeds limit of %u", LIMIT_TRACKS);
+    return -1;
+  }
+
   node = ne_pool_alloc(sizeof(*node), ctx->alloc_pool);
   if (!node)
     return -1;
@@ -1343,6 +1358,7 @@ ne_read_master(nestegg * ctx, struct ebml_element_desc * desc)
   list->tail = node;
   if (!list->head)
     list->head = node;
+  list->count += 1;
 
   ctx->log(ctx, NESTEGG_LOG_DEBUG, " -> using data %p", node->data);
 
@@ -1715,31 +1731,98 @@ ne_get_timecode_scale(nestegg * ctx)
 }
 
 static int
+ne_compare_track_number_index(void const * a, void const * b)
+{
+  struct track_number_index const * ta = a;
+  struct track_number_index const * tb = b;
+
+  if (ta->number < tb->number)
+    return -1;
+  if (ta->number > tb->number)
+    return 1;
+  return 0;
+}
+
+static int
+ne_init_track_indexes(nestegg * ctx)
+{
+  struct ebml_list * tracks = &ctx->segment.tracks.track_entry;
+  struct ebml_list_node * node;
+  size_t i;
+
+  if (tracks->count == 0 || tracks->count > LIMIT_TRACKS)
+    return -1;
+
+  ctx->track_by_index =
+    ne_pool_alloc(tracks->count * sizeof(*ctx->track_by_index),
+                  ctx->alloc_pool);
+  if (!ctx->track_by_index)
+    return -1;
+
+  ctx->track_by_number =
+    ne_pool_alloc(tracks->count * sizeof(*ctx->track_by_number),
+                  ctx->alloc_pool);
+  if (!ctx->track_by_number)
+    return -1;
+
+  node = tracks->head;
+  for (i = 0; i < tracks->count; ++i) {
+    struct track_entry * entry;
+    uint64_t number;
+
+    if (!node || node->id != ID_TRACK_ENTRY)
+      return -1;
+
+    entry = node->data;
+    if (ne_get_uint(entry->number, &number) != 0 || number == 0)
+      return -1;
+
+    ctx->track_by_index[i] = entry;
+    ctx->track_by_number[i].number = number;
+    ctx->track_by_number[i].index = (unsigned int) i;
+    node = node->next;
+  }
+
+  if (node)
+    return -1;
+
+  qsort(ctx->track_by_number, tracks->count,
+        sizeof(*ctx->track_by_number), ne_compare_track_number_index);
+
+  for (i = 1; i < tracks->count; ++i) {
+    if (ctx->track_by_number[i - 1].number ==
+        ctx->track_by_number[i].number)
+      return -1;
+  }
+
+  ctx->track_count = (unsigned int) tracks->count;
+  return 0;
+}
+
+static int
 ne_map_track_number_to_index(nestegg * ctx,
-                             unsigned int track_number,
+                             uint64_t track_number,
                              unsigned int * track_index)
 {
-  struct ebml_list_node * node;
-  struct track_entry * t_entry;
-  uint64_t t_number = 0;
-
-  if (!track_index)
-    return -1;
-  *track_index = 0;
+  size_t start = 0;
+  size_t end = ctx->track_count;
 
   if (track_number == 0)
     return -1;
 
-  node = ctx->segment.tracks.track_entry.head;
-  while (node) {
-    assert(node->id == ID_TRACK_ENTRY);
-    t_entry = node->data;
-    if (ne_get_uint(t_entry->number, &t_number) != 0)
-      return -1;
-    if (t_number == track_number)
+  while (start < end) {
+    size_t middle = start + (end - start) / 2;
+    struct track_number_index const * entry = &ctx->track_by_number[middle];
+
+    if (track_number < entry->number) {
+      end = middle;
+    } else if (track_number > entry->number) {
+      start = middle + 1;
+    } else {
+      if (track_index)
+        *track_index = entry->index;
       return 0;
-    *track_index += 1;
-    node = node->next;
+    }
   }
 
   return -1;
@@ -1748,19 +1831,10 @@ ne_map_track_number_to_index(nestegg * ctx,
 static struct track_entry *
 ne_find_track_entry(nestegg * ctx, unsigned int track)
 {
-  struct ebml_list_node * node;
-  unsigned int tracks = 0;
+  if (track >= ctx->track_count)
+    return NULL;
 
-  node = ctx->segment.tracks.track_entry.head;
-  while (node) {
-    assert(node->id == ID_TRACK_ENTRY);
-    if (track == tracks)
-      return node->data;
-    tracks += 1;
-    node = node->next;
-  }
-
-  return NULL;
+  return ctx->track_by_index[track];
 }
 
 static struct frame *
@@ -2515,7 +2589,6 @@ nestegg_init(nestegg ** context, nestegg_io io, nestegg_log callback, int64_t ma
 {
   int r;
   uint64_t id, version, docversion;
-  struct ebml_list_node * track;
   char * doctype;
   nestegg * ctx;
 
@@ -2575,12 +2648,9 @@ nestegg_init(nestegg ** context, nestegg_io io, nestegg_log callback, int64_t ma
     return -1;
   }
 
-  track = ctx->segment.tracks.track_entry.head;
-  ctx->track_count = 0;
-
-  while (track) {
-    ctx->track_count += 1;
-    track = track->next;
+  if (ne_init_track_indexes(ctx) != 0) {
+    nestegg_destroy(ctx);
+    return -1;
   }
 
   r = ne_ctx_save(ctx, &ctx->saved);
