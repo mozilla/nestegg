@@ -2287,10 +2287,14 @@ ne_read_block_additions(nestegg * ctx, uint64_t block_size, struct block_additio
       }
 
       if (id == ID_BLOCK_ADD_ID) {
-        r = ne_read_uint(&ctx->io, &add_id, size);
-        if (r != 1) {
-          free(data);
-          return r;
+        /* A zero-length BlockAddID resolves to the default of 1 (RFC 9559
+           Section 5.1.3.5.2.3), which add_id already holds. */
+        if (size != 0) {
+          r = ne_read_uint(&ctx->io, &add_id, size);
+          if (r != 1) {
+            free(data);
+            return r;
+          }
         }
 
         if (add_id == 0) {
