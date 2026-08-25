@@ -32,6 +32,7 @@ MEDIA="
   hdr10.webm
   bug2045549.webm
   zerolen_default.webm
+  zerolen_audio.webm
 "
 
 # Test normal and short-read callback behavior.
