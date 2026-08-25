@@ -35,6 +35,7 @@ MEDIA="
   zerolen_audio.webm
   zerolen_display.webm
   zerolen_repeat.webm
+  zerolen_blockaddid.webm
 "
 
 # Test normal and short-read callback behavior.
