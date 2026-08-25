@@ -160,10 +160,16 @@ enum ebml_type_enum {
   TYPE_BINARY
 };
 
+/* Read state of an element's storage.  EBML_READ_DEFAULT is established
+   before parsing for elements with a schema-declared default, so it does not
+   mean the element was present in the file.  EBML_READ_EMPTY marks an element
+   that was present with a zero length payload but whose default only the
+   accessor can supply: it counts as read, but holds no value. */
 enum ebml_read_state {
   EBML_UNREAD = 0,
   EBML_READ_VALUE,
-  EBML_READ_DEFAULT
+  EBML_READ_DEFAULT,
+  EBML_READ_EMPTY
 };
 
 #define LIMIT_STRING                (1 << 20)
@@ -179,6 +185,7 @@ enum ebml_read_state {
 #define DESC_FLAG_SUSPEND           (1 << 1)
 #define DESC_FLAG_OFFSET            (1 << 2)
 #define DESC_FLAG_HAS_DEFAULT       (1 << 3)
+#define DESC_FLAG_ACCESSOR_DEFAULT  (1 << 4)
 
 /* Block Header Flags */
 #define SIMPLE_BLOCK_FLAGS_KEYFRAME (1 << 7)
@@ -517,7 +524,9 @@ struct ebml_element_desc {
   size_t data_offset;
   /* Schema-declared default value, valid if DESC_FLAG_HAS_DEFAULT is set.
      Stored as two scalars rather than a union to allow static
-     initialization in C89. */
+     initialization in C89.  An element whose default can't be expressed
+     here instead carries DESC_FLAG_ACCESSOR_DEFAULT and is resolved by the
+     accessor. */
   uint64_t default_uint;
   double default_float;
 };
@@ -528,6 +537,8 @@ struct ebml_element_desc {
   { #ID, ID, TYPE_UINT, offsetof(STRUCT, FIELD), DESC_FLAG_HAS_DEFAULT, NULL, 0, 0, DEFAULT, 0.0 }
 #define E_FIELD_DEFAULT_FLOAT(ID, STRUCT, FIELD, DEFAULT) \
   { #ID, ID, TYPE_FLOAT, offsetof(STRUCT, FIELD), DESC_FLAG_HAS_DEFAULT, NULL, 0, 0, 0, DEFAULT }
+#define E_FIELD_ACCESSOR_DEFAULT(ID, TYPE, STRUCT, FIELD) \
+  { #ID, ID, TYPE, offsetof(STRUCT, FIELD), DESC_FLAG_ACCESSOR_DEFAULT, NULL, 0, 0, 0, 0.0 }
 #define E_MASTER(ID, TYPE, STRUCT, FIELD) \
   { #ID, ID, TYPE, offsetof(STRUCT, FIELD), DESC_FLAG_MULTI, ne_ ## FIELD ## _elements, \
       sizeof(struct FIELD), 0, 0, 0.0 }
@@ -613,8 +624,8 @@ static struct ebml_element_desc ne_video_elements[] = {
   E_FIELD_DEFAULT_UINT(ID_PIXEL_CROP_TOP, struct video, pixel_crop_top, 0),
   E_FIELD_DEFAULT_UINT(ID_PIXEL_CROP_LEFT, struct video, pixel_crop_left, 0),
   E_FIELD_DEFAULT_UINT(ID_PIXEL_CROP_RIGHT, struct video, pixel_crop_right, 0),
-  E_FIELD(ID_DISPLAY_WIDTH, TYPE_UINT, struct video, display_width),
-  E_FIELD(ID_DISPLAY_HEIGHT, TYPE_UINT, struct video, display_height),
+  E_FIELD_ACCESSOR_DEFAULT(ID_DISPLAY_WIDTH, TYPE_UINT, struct video, display_width),
+  E_FIELD_ACCESSOR_DEFAULT(ID_DISPLAY_HEIGHT, TYPE_UINT, struct video, display_height),
   E_SINGLE_MASTER(ID_COLOUR, TYPE_MASTER, struct video, colour),
   E_SINGLE_MASTER(ID_PROJECTION, TYPE_MASTER, struct video, projection),
   E_LAST
@@ -623,7 +634,7 @@ static struct ebml_element_desc ne_video_elements[] = {
 static struct ebml_element_desc ne_audio_elements[] = {
   E_FIELD_DEFAULT_FLOAT(ID_SAMPLING_FREQUENCY, struct audio, sampling_frequency, 8000.0),
   E_FIELD_DEFAULT_UINT(ID_CHANNELS, struct audio, channels, 1),
-  E_FIELD(ID_BIT_DEPTH, TYPE_UINT, struct audio, bit_depth),
+  E_FIELD_ACCESSOR_DEFAULT(ID_BIT_DEPTH, TYPE_UINT, struct audio, bit_depth),
   E_LAST
 };
 
@@ -711,6 +722,7 @@ static struct ebml_element_desc ne_top_level_elements[] = {
 #undef E_FIELD
 #undef E_FIELD_DEFAULT_UINT
 #undef E_FIELD_DEFAULT_FLOAT
+#undef E_FIELD_ACCESSOR_DEFAULT
 #undef E_MASTER
 #undef E_SINGLE_MASTER_O
 #undef E_SINGLE_MASTER
@@ -1164,10 +1176,19 @@ ne_read_binary(nestegg * ctx, struct ebml_binary * val, uint64_t length)
   return ne_io_read(&ctx->io, val->data, length);
 }
 
+/* True if this element's storage holds a value to report: one read from the
+   file, or a schema-declared default.  An element which is absent or was read
+   empty holds nothing, and reads back as absent. */
+static int
+ne_type_is_set(struct ebml_type type)
+{
+  return type.read == EBML_READ_VALUE || type.read == EBML_READ_DEFAULT;
+}
+
 static int
 ne_get_uint(struct ebml_type type, uint64_t * value)
 {
-  if (type.read == EBML_UNREAD)
+  if (!ne_type_is_set(type))
     return -1;
 
   assert(type.type == TYPE_UINT);
@@ -1180,7 +1201,7 @@ ne_get_uint(struct ebml_type type, uint64_t * value)
 static int
 ne_get_float(struct ebml_type type, double * value)
 {
-  if (type.read == EBML_UNREAD)
+  if (!ne_type_is_set(type))
     return -1;
 
   assert(type.type == TYPE_FLOAT);
@@ -1193,7 +1214,7 @@ ne_get_float(struct ebml_type type, double * value)
 static int
 ne_get_string(struct ebml_type type, char ** value)
 {
-  if (type.read == EBML_UNREAD)
+  if (!ne_type_is_set(type))
     return -1;
 
   assert(type.type == TYPE_STRING);
@@ -1206,7 +1227,7 @@ ne_get_string(struct ebml_type type, char ** value)
 static int
 ne_get_binary(struct ebml_type type, struct ebml_binary * value)
 {
-  if (type.read == EBML_UNREAD)
+  if (!ne_type_is_set(type))
     return -1;
 
   assert(type.type == TYPE_BINARY);
@@ -1434,7 +1455,7 @@ ne_read_simple(nestegg * ctx, struct ebml_element_desc * desc, size_t length)
 
   storage = (struct ebml_type *) (ctx->ancestor->data + desc->offset);
 
-  if (storage->read == EBML_READ_VALUE) {
+  if (storage->read == EBML_READ_VALUE || storage->read == EBML_READ_EMPTY) {
     ctx->log(ctx, NESTEGG_LOG_DEBUG, "element %llx (%s) already read, skipping %u",
              desc->id, desc->name, length);
     return ne_io_read_skip(&ctx->io, length);
@@ -1444,6 +1465,17 @@ ne_read_simple(nestegg * ctx, struct ebml_element_desc * desc, size_t length)
 
   ctx->log(ctx, NESTEGG_LOG_DEBUG, "element %llx (%s) -> %p (%u)",
            desc->id, desc->name, storage, desc->offset);
+
+  /* Elements whose default the descriptor can't express are resolved by the
+     accessor, so record a zero-length instance as read but valueless and let
+     the accessor treat it as absent.  RFC 8794 Section 6.1 defines the value
+     of an empty element only for elements with a declared default (the
+     default) and without one (zero); these have neither, and zero is outside
+     the range RFC 9559 permits for each of them. */
+  if (length == 0 && (desc->flags & DESC_FLAG_ACCESSOR_DEFAULT)) {
+    storage->read = EBML_READ_EMPTY;
+    return 1;
+  }
 
   switch (desc->type) {
   case TYPE_UINT:
@@ -3151,9 +3183,12 @@ nestegg_track_video_params(nestegg * ctx, unsigned int track,
   if (ne_get_uint(entry->video.pixel_crop_right, &value) == 0)
     params->crop_right = value;
 
-  /* DisplayWidth and DisplayHeight default to PixelWidth and PixelHeight;
-     dynamic defaults are not representable in the element descriptors, so
-     apply them here. */
+  /* DisplayWidth and DisplayHeight default to PixelWidth and PixelHeight.  A
+     derived default is not representable in the element descriptors, which
+     mark these elements DESC_FLAG_ACCESSOR_DEFAULT so that an absent and a
+     zero-length instance both arrive here unread.  Note RFC 9559 derives the
+     default from the frame size left by the PixelCrop elements when
+     DisplayUnit is 0; nestegg reports the uncropped size. */
   value = params->width;
   ne_get_uint(entry->video.display_width, &value);
   params->display_width = value;
@@ -3258,7 +3293,9 @@ nestegg_track_audio_params(nestegg * ctx, unsigned int track,
   if (ne_get_uint(entry->audio.channels, &value) == 0)
     params->channels = value;
 
-  /* BitDepth has no declared default; 16 is nestegg API policy. */
+  /* BitDepth has no declared default; 16 is nestegg API policy.  The
+     descriptor marks it DESC_FLAG_ACCESSOR_DEFAULT so that a zero-length
+     BitDepth reads back as 16 too, rather than as an out-of-range 0. */
   value = 16;
   ne_get_uint(entry->audio.bit_depth, &value);
   params->depth = value;
