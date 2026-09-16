@@ -36,6 +36,7 @@ MEDIA="
   zerolen_display.webm
   zerolen_repeat.webm
   zerolen_blockaddid.webm
+  pcm.mkv
 "
 
 # Test normal and short-read callback behavior.
